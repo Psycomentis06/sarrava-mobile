@@ -1,0 +1,12 @@
+/**
+ * Validate if a given string is an email address
+ * @param email email string
+ * @returns true if email is valid otherwise false
+ */
+export function validateEmail(email: string) :boolean {
+    return String(email)
+    .toLowerCase()
+    .match(
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    ) != null;
+}
