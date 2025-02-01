@@ -1,8 +1,8 @@
 /**
  * IOS specific color palette taken from https://developer.apple.com/design/human-interface-guidelines/color
 */
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#EEEEEE';
+const tintColorDark = '#212121';
 
 export const Colors = {
   light: {
@@ -14,7 +14,7 @@ export const Colors = {
     tabIconSelected: tintColorLight,
     accent: '#007AFF',
     warn: '#FF9500',
-    sucess: '#34C759',
+    success: '#34C759',
     error: '#FF3B30'
   },
   dark: {
@@ -26,7 +26,7 @@ export const Colors = {
     tabIconSelected: tintColorDark,
     accent: '#0A84FF',
     warn: '#FF9F0A',
-    sucess: '#30D158',
+    success: '#30D158',
     error: '#FF4530'
   },
 };
