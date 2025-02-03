@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { hexToRgb, hexToRgba } from "@/utils/colors";
 
 const DATA = [
   {
@@ -23,6 +24,7 @@ const DATA = [
       icon: "$",
     },
     fee: 0.2,
+    status: "VALIDATED",
     reciever: {
       name: "user user",
       address: "5 Street",
@@ -41,6 +43,7 @@ const DATA = [
       icon: "€",
     },
     fee: 0.15,
+    status: "VALIDATED",
     reciever: {
       name: "Sarah Johnson",
       address: "42 Oakwood Avenue",
@@ -59,6 +62,7 @@ const DATA = [
       icon: "£",
     },
     fee: 0.25,
+    status: "CANCELED",
     reciever: {
       name: "Emma Wilson",
       address: "89 Park Lane",
@@ -77,6 +81,7 @@ const DATA = [
       icon: "¥",
     },
     fee: 0.1,
+    status: "VALIDATED",
     reciever: {
       name: "Oliver Davis",
       address: "67 Cedar Road",
@@ -95,6 +100,7 @@ const DATA = [
       icon: "₣",
     },
     fee: 0.22,
+    status: "CANCELED",
     reciever: {
       name: "William Taylor",
       address: "34 Elm Street",
@@ -113,6 +119,7 @@ const DATA = [
       icon: "₹",
     },
     fee: 0.18,
+    status: "FAILED",
     reciever: {
       name: "James Garcia",
       address: "56 Walnut Drive",
@@ -128,6 +135,18 @@ export default function TransactionScreen() {
   const insets = useSafeAreaInsets();
   const palette = useThemePalette();
   const navigation = useNavigation();
+
+  const getItemColorByStatus = (status: string) => {
+    switch (status) {
+      case "FAILED":
+        return hexToRgba(palette.error, 0.26);
+      case "CANCELED":
+        return hexToRgba(palette.warn, 0.26);
+      default:
+        return palette.tint;
+    }
+  };
+
   return (
     <ThemedView
       style={{
@@ -166,7 +185,7 @@ export default function TransactionScreen() {
                 <Pressable
                   style={[
                     styles.transactionsListItem,
-                    { backgroundColor: palette.tint },
+                    { backgroundColor: getItemColorByStatus(i.item.status) },
                   ]}
                   android_ripple={{ color: "rgba(0,0,0,0.26)" }}
                   onPress={() => {
