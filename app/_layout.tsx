@@ -12,6 +12,8 @@ import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { getThemeMode } from "@/services/themes";
+import { Appearance } from "react-native";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -25,6 +27,11 @@ export default function RootLayout() {
     if (loaded) {
       SplashScreen.hideAsync();
     }
+
+    getThemeMode().then((mode) => {
+      if (mode === "system") Appearance.setColorScheme(null);
+      else Appearance.setColorScheme(mode);
+    });
   }, [loaded]);
 
   if (!loaded) {
