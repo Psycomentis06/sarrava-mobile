@@ -29,6 +29,7 @@ export default function SettingsScreen() {
         <ThemedText>Theme Mode</ThemedText>
         <Picker
           style={{ color: palette.text }}
+          dropdownIconColor={palette.text}
           selectedValue={themeMode}
           onValueChange={(val) => {
             if (Platform.OS === "web") {
