@@ -7,8 +7,8 @@ export default function addTransaction() {
   return (
     <>
       <Stack.Screen
-        name="add-transaction"
-        options={{ title: "Add transaction" }}
+        name="new-transaction"
+        options={{ title: "New transaction" }}
       />
       <ThemedView>
         <ThemedText>New Transaction</ThemedText>

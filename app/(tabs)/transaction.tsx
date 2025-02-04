@@ -4,15 +4,10 @@ import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { useNavigation } from "expo-router";
-import {
-  FlatList,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { hexToRgb, hexToRgba } from "@/utils/colors";
+import { hexToRgba } from "@/utils/colors";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 
 const DATA = [
   {
@@ -161,14 +156,25 @@ export default function TransactionScreen() {
           style={{
             flexDirection: "row",
             justifyContent: "space-evenly",
+            alignItems: "center",
             paddingBottom: 20,
             borderBottomWidth: 2,
             borderColor: palette.tint,
           }}
         >
-          <ThemedTextInput placeholder="Search" style={{ width: "70%" }} />
-          <ThemedButton style={{ width: "20%" }}>
-            <ThemedText>New</ThemedText>
+          <ThemedTextInput placeholder="Search" style={{ width: "75%" }} />
+          <ThemedButton
+            style={{ width: "15%", borderRadius: "50%" }}
+            onPress={() => navigation.navigate("transaction/add" as never)}
+          >
+            <ThemedText>
+              <IconSymbol
+                style={{ textAlign: "center" }}
+                size={24}
+                name="plus.app"
+                color={palette.background}
+              />
+            </ThemedText>
           </ThemedButton>
         </View>
 
