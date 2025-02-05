@@ -32,7 +32,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
+          title: "الصفحة الرّئسية",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
           ),
@@ -41,7 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="transaction"
         options={{
-          title: "Transaction",
+          title: "المعاملات",
           tabBarIcon: ({ color }) => (
             <IconSymbol
               size={28}
@@ -54,7 +54,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="notification"
         options={{
-          title: "Notifications",
+          title: "الأشعارات",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="bell" color={color} />
           ),
@@ -65,7 +65,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           href: null,
-          title: "Settings",
+          title: "الأعدادات",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="gear" color={color} />
           ),
@@ -74,7 +74,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="menu"
         options={{
-          title: "Menu",
+          title: "المزيد",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="ellipsis.circle" color={color} />
           ),

@@ -21,12 +21,12 @@ const DATA = [
     fee: 0.2,
     status: "VALIDATED",
     reciever: {
-      name: "user user",
-      address: "5 Street",
+      name: "علي الحسن",
+      address: "5 شارع النخيل",
     },
     sender: {
-      name: "user user",
-      address: "street",
+      name: "فاطمة الزهراء",
+      address: "شارع الورد",
     },
   },
   {
@@ -40,12 +40,12 @@ const DATA = [
     fee: 0.15,
     status: "VALIDATED",
     reciever: {
-      name: "Sarah Johnson",
-      address: "42 Oakwood Avenue",
+      name: "ليلى العلي",
+      address: "42 شارع البلوط",
     },
     sender: {
-      name: "Michael Brown",
-      address: "123 Maple Street",
+      name: "يوسف محمد",
+      address: "123 شارع القيقب",
     },
   },
   {
@@ -59,12 +59,12 @@ const DATA = [
     fee: 0.25,
     status: "CANCELED",
     reciever: {
-      name: "Emma Wilson",
-      address: "89 Park Lane",
+      name: "إيهاب السعيد",
+      address: "89 شارع الحديقة",
     },
     sender: {
-      name: "David Smith",
-      address: "456 Broadway",
+      name: "سارة أحمد",
+      address: "456 شارع برودواي",
     },
   },
   {
@@ -78,12 +78,12 @@ const DATA = [
     fee: 0.1,
     status: "VALIDATED",
     reciever: {
-      name: "Oliver Davis",
-      address: "67 Cedar Road",
+      name: "أحمد سعيد",
+      address: "67 شارع الأرز",
     },
     sender: {
-      name: "Sophia Miller",
-      address: "901 Pine Boulevard",
+      name: "صوفيا علي",
+      address: "901 شارع الصنوبر",
     },
   },
   {
@@ -97,12 +97,12 @@ const DATA = [
     fee: 0.22,
     status: "CANCELED",
     reciever: {
-      name: "William Taylor",
-      address: "34 Elm Street",
+      name: "وليد الطيب",
+      address: "34 شارع البلوط",
     },
     sender: {
-      name: "Charlotte Anderson",
-      address: "678 Cherry Avenue",
+      name: "شارلوت حسن",
+      address: "678 شارع الكرز",
     },
   },
   {
@@ -116,12 +116,12 @@ const DATA = [
     fee: 0.18,
     status: "FAILED",
     reciever: {
-      name: "James Garcia",
-      address: "56 Walnut Drive",
+      name: "جمال الدين",
+      address: "56 شارع الجوز",
     },
     sender: {
-      name: "Abigail Rodriguez",
-      address: "234 Spruce Court",
+      name: "أبيغيل عادل",
+      address: "234 شارع التنوب",
     },
   },
 ];
@@ -162,9 +162,9 @@ export default function TransactionScreen() {
             borderColor: palette.tint,
           }}
         >
-          <ThemedTextInput placeholder="Search" style={{ width: "75%" }} />
+          <ThemedTextInput placeholder="بحث" style={{ width: "75%" }} />
           <ThemedButton
-            style={{ width: "15%", borderRadius: "50%" }}
+            style={{ width: 45, borderRadius: "50%" }}
             onPress={() => navigation.navigate("transaction/add" as never)}
           >
             <ThemedText>
@@ -202,13 +202,13 @@ export default function TransactionScreen() {
                     {i.item.id}
                   </ThemedText>
                   <View style={{ flexDirection: "row", gap: 5 }}>
-                    <ThemedText style={{ opacity: 0.7 }}>From:</ThemedText>
+                    <ThemedText style={{ opacity: 0.7 }}>من:</ThemedText>
                     <ThemedText type="defaultSemiBold">
                       {i.item.sender.name}
                     </ThemedText>
                   </View>
                   <View style={{ flexDirection: "row", gap: 5 }}>
-                    <ThemedText style={{ opacity: 0.7 }}>To:</ThemedText>
+                    <ThemedText style={{ opacity: 0.7 }}>إلى:</ThemedText>
                     <ThemedText type="defaultSemiBold">
                       {i.item.reciever.name}
                     </ThemedText>
@@ -220,7 +220,7 @@ export default function TransactionScreen() {
                     }}
                   >
                     <View style={{ flexDirection: "row", gap: 5 }}>
-                      <ThemedText style={{ opacity: 0.7 }}>Price:</ThemedText>
+                      <ThemedText style={{ opacity: 0.7 }}>المبلغ:</ThemedText>
                       <ThemedText type="subtitle">
                         {i.item.currency.icon + "" + i.item.amount}
                       </ThemedText>
@@ -245,5 +245,15 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 10,
+  },
+  shadow_1: {
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 1.0,
+    elevation: 1,
   },
 });

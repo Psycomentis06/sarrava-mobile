@@ -26,7 +26,7 @@ export default function SettingsScreen() {
       }}
     >
       <View style={{ margin: 5 }}>
-        <ThemedText>Theme Mode</ThemedText>
+        <ThemedText>مظهر التطبيق</ThemedText>
         <Picker
           style={{ color: palette.text }}
           dropdownIconColor={palette.text}
@@ -50,12 +50,12 @@ export default function SettingsScreen() {
             }
           }}
         >
-          <Picker.Item label="System" value={"system"} />
-          <Picker.Item label="Dark" value={"dark"} />
-          <Picker.Item label="Light" value={"light"} />
+          <Picker.Item label="تلقائي" value={"system"} />
+          <Picker.Item label="داكن" value={"dark"} />
+          <Picker.Item label="فاتح" value={"light"} />
         </Picker>
-        <ThemedText style={{ opacity: 0.6 }}>Language</ThemedText>
-        <ThemedText style={{ opacity: 0.6 }}>Currency</ThemedText>
+        <ThemedText style={{ opacity: 0.6 }}>اللغة</ThemedText>
+        <ThemedText style={{ opacity: 0.6 }}>العملة</ThemedText>
       </View>
     </ThemedView>
   );

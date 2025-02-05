@@ -48,7 +48,7 @@ export default function MoreOptions() {
             color={text}
             style={{ marginHorizontal: 5 }}
           />
-          <ThemedText style={{ marginLeft: 5 }}>Settings</ThemedText>
+          <ThemedText style={{ marginLeft: 5 }}>الأعدادات</ThemedText>
         </Pressable>
         <Pressable style={styles.menuItem}>
           <IconSymbol
@@ -58,7 +58,7 @@ export default function MoreOptions() {
             style={{ marginHorizontal: 5 }}
           />
           <ThemedText style={{ color: error, marginLeft: 5 }}>
-            Sign out
+            تسجيل الخروج
           </ThemedText>
         </Pressable>
         <Pressable style={styles.menuItem}>
@@ -68,7 +68,9 @@ export default function MoreOptions() {
             color={error}
             style={{ marginHorizontal: 5 }}
           />
-          <ThemedText style={{ color: error, marginLeft: 5 }}>Exit</ThemedText>
+          <ThemedText style={{ color: error, marginLeft: 5 }}>
+            أغلاق التطبيق
+          </ThemedText>
         </Pressable>
       </View>
     </ThemedView>

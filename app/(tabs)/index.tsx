@@ -26,7 +26,7 @@ export default function HomeScreen() {
         <View>
           {/* stats */}
           <ThemedText style={styles.overviewTitle} type="title">
-            Overview
+            ملخص
           </ThemedText>
           <View
             style={[
@@ -36,26 +36,25 @@ export default function HomeScreen() {
           >
             <View style={[styles.statsItem]}>
               <ThemedText type="subtitle">$12,345</ThemedText>
-              <ThemedText style={styles.statsValueItem}>
-                Transactions
-              </ThemedText>
+              <ThemedText style={styles.statsValueItem}>المعاملات</ThemedText>
             </View>
             <View style={[styles.statsItem]}>
               <ThemedText type="subtitle">$567</ThemedText>
-              <ThemedText style={styles.statsValueItem}>Fee</ThemedText>
+              <ThemedText style={styles.statsValueItem}>التكاليف</ThemedText>
             </View>
             <View style={[styles.statsItem]}>
               <ThemedText type="subtitle">$11,778</ThemedText>
-              <ThemedText style={styles.statsValueItem}>Revenu</ThemedText>
+              <ThemedText style={styles.statsValueItem}>الإيرادات</ThemedText>
             </View>
           </View>
         </View>
         <View style={styles.quickActionsContainer}>
           {/* quick actions */}
-          <ThemedText type="title">Quick Actions</ThemedText>
+          <ThemedText type="title">أختصارات</ThemedText>
           <View style={styles.quickActionsButtonsContainer}>
             <View style={styles.quickActionsButtonsContainerSection}>
               <ThemedButton
+                style={{ width: 120 }}
                 onPress={() => navigation.navigate("transaction/add" as never)}
               >
                 <IconSymbol
@@ -68,10 +67,10 @@ export default function HomeScreen() {
                   type="defaultSemiBold"
                   style={{ textAlign: "center", color: palette.background }}
                 >
-                  Add transaction
+                  معاملة جديدة
                 </ThemedText>
               </ThemedButton>
-              <ThemedButton>
+              <ThemedButton style={{ width: 120 }}>
                 <IconSymbol
                   style={{ textAlign: "center", color: palette.background }}
                   name="chart.pie.fill"
@@ -82,12 +81,12 @@ export default function HomeScreen() {
                   type="defaultSemiBold"
                   style={{ textAlign: "center", color: palette.background }}
                 >
-                  New Report
+                  تقرير جديد
                 </ThemedText>
               </ThemedButton>
             </View>
             <View style={styles.quickActionsButtonsContainerSection}>
-              <ThemedButton>
+              <ThemedButton style={{ width: 120 }}>
                 <IconSymbol
                   style={{ textAlign: "center", color: palette.background }}
                   name="person.badge.plus.fill"
@@ -98,10 +97,10 @@ export default function HomeScreen() {
                   type="defaultSemiBold"
                   style={{ textAlign: "center", color: palette.background }}
                 >
-                  New Agent
+                  وكيل جديد
                 </ThemedText>
               </ThemedButton>
-              <ThemedButton>
+              <ThemedButton style={{ width: 120 }}>
                 <IconSymbol
                   name="coloncurrencysign.arrow.circlepath"
                   style={{ textAlign: "center", color: palette.background }}
@@ -112,7 +111,7 @@ export default function HomeScreen() {
                   style={{ textAlign: "center", color: palette.background }}
                   type="defaultSemiBold"
                 >
-                  Currency Exchange
+                  صرف العملات
                 </ThemedText>
               </ThemedButton>
             </View>
@@ -130,6 +129,7 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: "row",
+    justifyContent: "center",
     gap: 5,
   },
   statsItem: {
@@ -139,6 +139,7 @@ const styles = StyleSheet.create({
   },
   statsValueItem: {
     textAlign: "center",
+    opacity: 0.5,
   },
 
   quickActionsContainer: {
