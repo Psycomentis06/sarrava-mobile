@@ -40,7 +40,21 @@ export default function MoreOptions() {
       <View>
         <Pressable
           style={styles.menuItem}
+          onPress={() => navigation.navigate("agent" as never)}
+          android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+        >
+          <IconSymbol
+            size={24}
+            name="gear"
+            color={text}
+            style={{ marginHorizontal: 5 }}
+          />
+          <ThemedText style={{ marginLeft: 5 }}>الوكلاء</ThemedText>
+        </Pressable>
+        <Pressable
+          style={styles.menuItem}
           onPress={() => navigation.navigate("settings" as never)}
+          android_ripple={{ color: "rgba(0,0,0,0.26)" }}
         >
           <IconSymbol
             size={24}
@@ -50,7 +64,10 @@ export default function MoreOptions() {
           />
           <ThemedText style={{ marginLeft: 5 }}>الأعدادات</ThemedText>
         </Pressable>
-        <Pressable style={styles.menuItem}>
+        <Pressable
+          style={styles.menuItem}
+          android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+        >
           <IconSymbol
             size={24}
             name="rectangle.portrait.and.arrow.right"
@@ -61,7 +78,10 @@ export default function MoreOptions() {
             تسجيل الخروج
           </ThemedText>
         </Pressable>
-        <Pressable style={styles.menuItem}>
+        <Pressable
+          style={styles.menuItem}
+          android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+        >
           <IconSymbol
             size={24}
             name="xmark.app"

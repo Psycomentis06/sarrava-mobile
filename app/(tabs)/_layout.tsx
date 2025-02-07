@@ -62,6 +62,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="menu"
+        options={{
+          title: "المزيد",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="ellipsis.circle" color={color} />
+          ),
+        }}
+      />
+      {/* HIDDEN TABS */}
+      <Tabs.Screen
         name="settings"
         options={{
           href: null,
@@ -72,11 +82,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="menu"
+        name="agent"
         options={{
-          title: "المزيد",
+          href: null,
+          title: "الوكلاء",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="ellipsis.circle" color={color} />
+            <IconSymbol size={28} name="gear" color={color} />
           ),
         }}
       />
