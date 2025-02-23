@@ -23,6 +23,7 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    Tajawal: require("../assets/fonts/Tajawal-Regular.ttf"),
   });
   useEffect(() => {
     if (loaded) {
@@ -43,15 +44,8 @@ export default function RootLayout() {
     <ThemeProvider value={DefaultTheme}>
       <AuthSessionProvider>
         <Stack>
-          // Auth screens
           <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-          // Tabs group
-          <Stack.Screen
-            name="(tabs)"
-            options={{
-              headerShown: false,
-            }}
-          />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />
