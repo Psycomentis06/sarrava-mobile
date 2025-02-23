@@ -14,6 +14,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { getThemeMode } from "@/services/themes";
 import { Appearance, I18nManager } from "react-native";
+import { AuthSessionProvider } from "@/contexts/auth";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -40,19 +41,21 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        // Auth screens
-        <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-        // Tabs group
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
+      <AuthSessionProvider>
+        <Stack>
+          // Auth screens
+          <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+          // Tabs group
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="auto" />
+      </AuthSessionProvider>
     </ThemeProvider>
   );
 }
