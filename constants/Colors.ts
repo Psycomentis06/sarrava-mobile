@@ -12,7 +12,7 @@ export const Colors = {
     icon: "#687076",
     tabIconDefault: "#687076",
     tabIconSelected: tintColorLight,
-    accent: "#2196F3",
+    accent: "#3628B7",
     warn: "#FF9800",
     success: "#00897B",
     error: "#E53935",
