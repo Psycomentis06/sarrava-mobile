@@ -7,8 +7,12 @@ const AuthContext = createContext<{
   session?: string | null;
   isLoading: boolean;
 }>({
-  signIn: () => null,
-  signOut: () => null,
+  signIn: () => {
+    console.log("Default Sign in");
+  },
+  signOut: () => {
+    console.log("Default Sign out");
+  },
   session: null,
   isLoading: false,
 });
@@ -29,8 +33,14 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   return (
     <AuthContext.Provider
       value={{
-        signIn: () => {},
-        signOut: () => {},
+        signIn: () => {
+          console.log("loging in");
+          setSession("random-key");
+        },
+        signOut: () => {
+          console.log("Logged out");
+          setSession(null);
+        },
         session,
         isLoading,
       }}

@@ -2,11 +2,13 @@ import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
+import { useSession } from "@/contexts/auth";
 import { validateEmail } from "@/services/validators";
 import { useState } from "react";
 import { Alert, Platform, StyleSheet } from "react-native";
 
 export default function Login() {
+  const { signIn } = useSession();
   const [email, onEmailChange] = useState("");
   const [password, onPasswordChange] = useState("");
   const login = () => {
@@ -22,6 +24,7 @@ export default function Login() {
       if (Platform.OS === "web") {
         alert("You are logged in 😜");
       } else {
+        signIn();
         Alert.alert("Success", "You are logged in 😜");
       }
     } else {
@@ -55,7 +58,9 @@ export default function Login() {
             maxLength={32}
           />
         </ThemedView>
-        <ThemedButton title="Login" onPress={login} />
+        <ThemedButton onPress={login}>
+          <ThemedText>Login</ThemedText>
+        </ThemedButton>
       </ThemedView>
     </ThemedView>
   );
