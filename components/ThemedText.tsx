@@ -18,6 +18,7 @@ export type ThemedTextProps = TextProps & {
     | "xl"
     | "xl2";
   weight?: "regular" | "semi-bold" | "bold" | "thin" | "extra-thin";
+  family?: string;
 };
 
 export function ThemedText({
@@ -26,6 +27,7 @@ export function ThemedText({
   darkColor,
   type = "default",
   weight = "regular",
+  family,
   ...rest
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
@@ -33,7 +35,7 @@ export function ThemedText({
   return (
     <Text
       style={[
-        { color },
+        { color, fontFamily: family ?? "Tajawal" },
         type === "default" ? styles.default : undefined,
         type === "title" ? styles.title : undefined,
         type === "defaultSemiBold" ? styles.defaultSemiBold : undefined,
