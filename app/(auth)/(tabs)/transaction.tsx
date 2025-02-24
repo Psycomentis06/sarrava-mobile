@@ -134,11 +134,11 @@ export default function TransactionScreen() {
   const getItemColorByStatus = (status: string) => {
     switch (status) {
       case "FAILED":
-        return hexToRgba(palette.error, 0.26);
+        return palette.error;
       case "CANCELED":
-        return hexToRgba(palette.warn, 0.26);
+        return palette.warn;
       default:
-        return palette.tint;
+        return palette.success;
     }
   };
 
@@ -191,25 +191,26 @@ export default function TransactionScreen() {
                 <Pressable
                   style={[
                     styles.transactionsListItem,
-                    { backgroundColor: getItemColorByStatus(i.item.status) },
+                    { backgroundColor: palette.tint },
                   ]}
                   android_ripple={{ color: "rgba(0,0,0,0.26)" }}
                   onPress={() => {
                     navigation.navigate("transaction/[id]", { id: i.item.id });
                   }}
                 >
-                  <ThemedText type="sm" style={{ opacity: 0.7 }}>
-                    {i.item.id}
-                  </ThemedText>
-                  <View style={{ flexDirection: "row", gap: 5 }}>
-                    <ThemedText style={{ opacity: 0.7 }}>من:</ThemedText>
-                    <ThemedText type="defaultSemiBold">
-                      {i.item.sender.name}
+                  <View
+                    style={{
+                      justifyContent: "space-between",
+                      flexDirection: "row",
+                    }}
+                  >
+                    <ThemedText type="sm" style={{ opacity: 0.7 }}>
+                      {"#" + i.item.id}
                     </ThemedText>
+                    <ThemedText>{i.item.date}</ThemedText>
                   </View>
                   <View style={{ flexDirection: "row", gap: 5 }}>
-                    <ThemedText style={{ opacity: 0.7 }}>إلى:</ThemedText>
-                    <ThemedText type="defaultSemiBold">
+                    <ThemedText type="l" weight="bold">
                       {i.item.reciever.name}
                     </ThemedText>
                   </View>
@@ -220,13 +221,34 @@ export default function TransactionScreen() {
                     }}
                   >
                     <View style={{ flexDirection: "row", gap: 5 }}>
-                      <ThemedText style={{ opacity: 0.7 }}>المبلغ:</ThemedText>
-                      <ThemedText type="subtitle">
+                      <ThemedText style={{ opacity: 0.7 }}>
+                        المبلغ:{"    "}
+                      </ThemedText>
+                      <ThemedText
+                        type="subtitle"
+                        weight="bold"
+                        style={{ color: palette.accent }}
+                      >
                         {i.item.currency.icon + "" + i.item.amount}
                       </ThemedText>
                     </View>
                     <ThemedText style={{ textAlign: "right", opacity: 0.7 }}>
-                      {i.item.date}
+                      الحالة:{" "}
+                      <ThemedText
+                        style={{
+                          color: getItemColorByStatus(i.item.status),
+                          fontWeight: "800",
+                          fontSize: 14,
+                        }}
+                      >
+                        {i.item.status === "VALIDATED"
+                          ? "مكتملة"
+                          : i.item.status === "FAILED"
+                          ? "فشلة"
+                          : i.item.status === "CANCELED"
+                          ? "غير مكتملة"
+                          : "غير مصنف"}
+                      </ThemedText>
                     </ThemedText>
                   </View>
                 </Pressable>
