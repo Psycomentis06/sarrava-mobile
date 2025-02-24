@@ -23,12 +23,15 @@ export default function TabLayout() {
           default: {},
         }),
         animation: "shift",
+        tabBarLabelStyle: {
+          fontFamily: "Tajawal",
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "الصفحة الرّئسية",
+          title: "الصفحة الرّئيسية",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
           ),
@@ -45,6 +48,13 @@ export default function TabLayout() {
               color={color}
             />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="home.old"
+        options={{
+          title: "Home old screen",
+          href: null,
         }}
       />
     </Tabs>
