@@ -6,8 +6,11 @@ import { useThemePalette } from "@/hooks/useThemePalette";
 import { Picker } from "@react-native-picker/picker";
 import { Stack } from "expo-router";
 import React, { useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import Stepper from "@/components/ui/Stepper";
+import TitleBanner from "@/components/svg/TitleBanner";
+import { LinearGradient } from "expo-linear-gradient";
+import { hexToRgba } from "@/utils/colors";
 
 type UserFormComponentProps = {
   title: string;
@@ -17,6 +20,8 @@ type UserFormComponentProps = {
   setName: React.Dispatch<React.SetStateAction<string>>;
   phone: string;
   setPhone: React.Dispatch<React.SetStateAction<string>>;
+  address: string;
+  setAddress: React.Dispatch<React.SetStateAction<string>>;
 };
 
 function UserFormComponent({
@@ -27,13 +32,30 @@ function UserFormComponent({
   setName,
   phone,
   setPhone,
+  address,
+  setAddress,
 }: UserFormComponentProps) {
   const palette = useThemePalette();
   return (
     <View style={[styles.sectionContainer, { backgroundColor: palette.tint }]}>
-      <ThemedText type="l" weight="bold" style={{ textAlign: "center" }}>
-        {title}
-      </ThemedText>
+      <LinearGradient
+        colors={[palette.accent, "transparent"]}
+        style={{
+          padding: 5,
+          borderRadius: 5,
+        }}
+        start={{ x: 1, y: 0 }}
+      >
+        <ThemedText
+          type="l"
+          weight="bold"
+          style={{
+            color: palette.background,
+          }}
+        >
+          {title}
+        </ThemedText>
+      </LinearGradient>
       <View style={{ paddingTop: 10, gap: 15 }}>
         <ThemedTextInput
           placeholder="الأسم الكامل"
@@ -54,38 +76,77 @@ function UserFormComponent({
           value={phone}
           onChangeText={setPhone}
         />
+        <ThemedTextInput
+          placeholder="العنوان"
+          value={address}
+          onChangeText={setAddress}
+        />
       </View>
     </View>
   );
 }
 function TransactionFormComponent() {
   const palette = useThemePalette();
+  const [priceInputFocused, setPriceInputFocused] = useState(false);
   return (
     <View style={[styles.sectionContainer, { backgroundColor: palette.tint }]}>
-      <ThemedText type="l" weight="bold" style={{ textAlign: "center" }}>
-        المعاملة
-      </ThemedText>
-      <View style={{ paddingTop: 10, gap: 15 }}>
-        <ThemedTextInput placeholder="المبلغ" keyboardType="numeric" />
-        <View
+      <LinearGradient
+        colors={[palette.accent, "transparent"]}
+        style={{
+          padding: 5,
+          borderRadius: 5,
+        }}
+        start={{ x: 1, y: 0 }}
+      >
+        <ThemedText
+          type="l"
+          weight="bold"
           style={{
-            borderWidth: 1.5,
-            borderRadius: 30,
-            borderColor: palette.text,
+            color: palette.background,
           }}
         >
-          <Picker
-            placeholder="العملة"
-            dropdownIconColor={palette.text}
+          المبلغ
+        </ThemedText>
+      </LinearGradient>
+      <View style={{ paddingTop: 10, gap: 15 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            borderWidth: 1,
+            borderRadius: 10,
+            borderColor: priceInputFocused
+              ? palette.accent
+              : hexToRgba(palette.text, 0.3),
+          }}
+        >
+          <ThemedTextInput
+            placeholder="المبلغ الجملي"
+            keyboardType="numeric"
             style={{
-              color: palette.text,
-              fontSize: 10,
+              width: "60%",
+              borderWidth: 0,
+              borderLeftWidth: 1,
+              borderRadius: 0,
             }}
-          >
-            <Picker.Item label="🇺🇸 الدولار الأمريكي" value="usd" />
-            <Picker.Item label="🇪🇺 اليورو الأروبي" value="eur" />
-            <Picker.Item label="🇹🇳 الدينار التونسي" value="tnd" />
-          </Picker>
+            onFocus={() => setPriceInputFocused(true)}
+            onBlur={() => setPriceInputFocused(false)}
+          />
+          <View style={{ width: "40%" }}>
+            <Picker
+              placeholder="العملة"
+              dropdownIconColor={palette.text}
+              style={{
+                color: palette.text,
+              }}
+              mode="dropdown"
+              onFocus={() => setPriceInputFocused(true)}
+              onBlur={() => setPriceInputFocused(false)}
+            >
+              <Picker.Item label="USD" value="usd" />
+              <Picker.Item label="EUR" value="eur" />
+              <Picker.Item label="TND" value="tnd" />
+            </Picker>
+          </View>
         </View>
         <ThemedTextInput placeholder="سعر الصرف" keyboardType="numeric" />
         <BouncyCheckbox
@@ -211,31 +272,14 @@ export default function AddTransactionScreen() {
   const [senderName, setSenderName] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
   const [senderPhone, setSenderPhone] = useState("");
+  const [senderAddress, setSenderAddress] = useState("");
 
   const [receiverName, setRecieverName] = useState("");
   const [receiverEmail, setRecieverEmail] = useState("");
   const [receiverPhone, setRecieverPhone] = useState("");
+  const [receiverAddress, setRecieverAddress] = useState("");
 
   const content = [
-    <UserFormComponent
-      title="المرسل"
-      name={senderName}
-      setName={setSenderName}
-      email={senderEmail}
-      setEmail={setSenderEmail}
-      phone={senderPhone}
-      setPhone={setSenderPhone}
-    />,
-    <UserFormComponent
-      title="المستقبل"
-      name={receiverName}
-      setName={setRecieverName}
-      email={receiverEmail}
-      setEmail={setRecieverEmail}
-      phone={receiverPhone}
-      setPhone={setRecieverPhone}
-    />,
-    <TransactionFormComponent />,
     <OverviewBeforeSubmit
       reciever={{
         email: receiverEmail,
@@ -257,28 +301,34 @@ export default function AddTransactionScreen() {
   ];
   return (
     <>
-      <Stack.Screen
-        name="new-transaction"
-        options={{ title: "معاملة جديدة" }}
-      />
-      <ThemedView>
-        <Stepper
-          active={active}
-          content={content}
-          onBack={() => setActive((p) => p - 1)}
-          onFinish={() => Alert.alert("تمّ التأكيد", "هذه نسخة تجريبيّة")}
-          onNext={() => setActive((p) => p + 1)}
-          wrapperStyle={{ padding: 10 }}
-          stepStyle={{ backgroundColor: palette.accent }}
-          stepTextStyle={{ color: palette.background }}
-          buttonBackStyle={{ backgroundColor: palette.muted }}
-          buttonNextStyle={{ backgroundColor: palette.accent }}
-          buttonFinishStyle={{ backgroundColor: palette.accent }}
-          backButtonLabel="الرجوع"
-          nextButtonLabel="التالي"
-          finishButtonLabel="تأكيد"
-        />
-      </ThemedView>
+      <Stack.Screen options={{ title: "إرسال أموال" }} />
+      <ScrollView>
+        <ThemedView>
+          <UserFormComponent
+            title="المستفيد"
+            name={receiverName}
+            setName={setRecieverName}
+            email={receiverEmail}
+            setEmail={setRecieverEmail}
+            phone={receiverPhone}
+            setPhone={setRecieverPhone}
+            address={receiverAddress}
+            setAddress={setRecieverAddress}
+          />
+          <UserFormComponent
+            title="المرسل"
+            name={senderName}
+            setName={setSenderName}
+            email={senderEmail}
+            setEmail={setSenderEmail}
+            phone={senderPhone}
+            setPhone={setSenderPhone}
+            address={senderAddress}
+            setAddress={setSenderAddress}
+          />
+          <TransactionFormComponent />,
+        </ThemedView>
+      </ScrollView>
     </>
   );
 }

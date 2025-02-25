@@ -121,10 +121,7 @@ export default function TransactionDetailsScreen() {
   const palette = useThemePalette();
   return (
     <>
-      <Stack.Screen
-        name="transaction-details"
-        options={{ title: "تفاصيل المعاملة" }}
-      />
+      <Stack.Screen options={{ title: "تفاصيل المعاملة" }} />
       {/*
        */}
       <TabView
