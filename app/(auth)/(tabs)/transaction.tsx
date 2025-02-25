@@ -264,9 +264,10 @@ export default function TransactionScreen() {
 const styles = StyleSheet.create({
   transactionsListItem: {
     marginVertical: 5,
-    paddingVertical: 5,
+    paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: 10,
+    overflow: "hidden",
   },
   shadow_1: {
     shadowColor: "#000000",
