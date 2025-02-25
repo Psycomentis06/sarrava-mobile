@@ -1,6 +1,7 @@
 import { TextInputProps, TextInput, StyleSheet } from "react-native";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useState } from "react";
+import { hexToRgba } from "@/utils/colors";
 
 export type ThemedTextInputProps = TextInputProps & {
   lightColor?: string;
@@ -26,7 +27,7 @@ export function ThemedTextInput({
       onBlur={() => setFocused(false)}
       placeholderTextColor={color}
       style={[
-        { borderColor: color, color: color },
+        { borderColor: hexToRgba(color, 0.3), color: color },
         styles.default,
         focused ? [styles.focused, { borderColor: accent }] : null,
         style,
@@ -38,9 +39,9 @@ export function ThemedTextInput({
 
 const styles = StyleSheet.create({
   default: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     padding: 10,
-    borderRadius: 30,
+    borderRadius: 10,
   },
   focused: {},
 });
