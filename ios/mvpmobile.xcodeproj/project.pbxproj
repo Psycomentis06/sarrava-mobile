@@ -14,7 +14,7 @@
 		96905EF65AED1B983A6B3ABC /* libPods-mvpmobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-mvpmobile.a */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		7EAC9E6DCD8E4704B653DDFE /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72734610E0F7413BA91B8BAF /* noop-file.swift */; };
+		797ACC05CECE4907AE67FA6E /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FED0424C45E4294927C422D /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,8 +31,8 @@
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-mvpmobile/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		72734610E0F7413BA91B8BAF /* noop-file.swift */ = {isa = PBXFileReference; name = "noop-file.swift"; path = "mvpmobile/noop-file.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
-		934097733304461DBFE4C985 /* mvpmobile-Bridging-Header.h */ = {isa = PBXFileReference; name = "mvpmobile-Bridging-Header.h"; path = "mvpmobile/mvpmobile-Bridging-Header.h"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; explicitFileType = undefined; includeInIndex = 0; };
+		5FED0424C45E4294927C422D /* noop-file.swift */ = {isa = PBXFileReference; name = "noop-file.swift"; path = "mvpmobile/noop-file.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
+		965D284B799A493F89E1A2C1 /* mvpmobile-Bridging-Header.h */ = {isa = PBXFileReference; name = "mvpmobile-Bridging-Header.h"; path = "mvpmobile/mvpmobile-Bridging-Header.h"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,8 +57,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				72734610E0F7413BA91B8BAF /* noop-file.swift */,
-				934097733304461DBFE4C985 /* mvpmobile-Bridging-Header.h */,
+				5FED0424C45E4294927C422D /* noop-file.swift */,
+				965D284B799A493F89E1A2C1 /* mvpmobile-Bridging-Header.h */,
 			);
 			name = mvpmobile;
 			sourceTree = "<group>";
@@ -198,7 +198,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				69FEF8848F1C466594DACA2F /* mvpmobile-Bridging-Header.h in Resources */,
+				E4E433F881C7413EB06B4951 /* mvpmobile-Bridging-Header.h in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,7 +274,7 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				7EAC9E6DCD8E4704B653DDFE /* noop-file.swift in Sources */,
+				797ACC05CECE4907AE67FA6E /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
