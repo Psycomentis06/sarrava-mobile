@@ -30,6 +30,8 @@ const MAPPING = {
   "person.badge.plus.fill": "person-add-alt-1",
   "arrow.left.arrow.right.circle": "transfer-within-a-station",
   bell: "notifications",
+  "square.and.arrow.down": "file-download",
+  "arrow.up.arrow.down": "swap-vert",
 } as Partial<
   Record<
     import("expo-symbols").SymbolViewProps["name"],
