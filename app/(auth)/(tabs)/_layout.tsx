@@ -51,6 +51,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="menu"
+        options={{
+          title: "المزيد",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="ellipsis.circle" color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="home.old"
         options={{
           title: "Home old screen",
