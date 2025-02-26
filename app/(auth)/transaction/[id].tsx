@@ -64,7 +64,7 @@ export default function TransactionDetailsScreen() {
               >
                 عدد المعاملة
               </ThemedText>
-              <ThemedText style={{ width: "50%" }}>#963258741</ThemedText>
+              <ThemedText style={{ width: "50%" }}>{"#" + id}</ThemedText>
               <ThemedText type="sm">2025-02-18</ThemedText>
             </View>
             <View style={{ flexDirection: "row", marginTop: 10 }}>
