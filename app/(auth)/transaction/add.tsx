@@ -6,11 +6,18 @@ import { useThemePalette } from "@/hooks/useThemePalette";
 import { Picker } from "@react-native-picker/picker";
 import { Stack } from "expo-router";
 import React, { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
-import Stepper from "@/components/ui/Stepper";
-import TitleBanner from "@/components/svg/TitleBanner";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { hexToRgba } from "@/utils/colors";
+import { ThemedButton } from "@/components/ThemedButton";
+
+type Currency = {
+  sign: string;
+  name: string;
+  country: string;
+  flag: string;
+  toDollarRate: number;
+};
 
 type UserFormComponentProps = {
   title: string;
@@ -23,6 +30,51 @@ type UserFormComponentProps = {
   address: string;
   setAddress: React.Dispatch<React.SetStateAction<string>>;
 };
+
+const CURRENCIES: Currency[] = [
+  {
+    sign: "TND",
+    name: "Tunisian Dinar",
+    country: "Tunisia",
+    flag: "🇹🇳",
+    toDollarRate: 0.31679218,
+  },
+  {
+    sign: "EUR",
+    name: "Euro",
+    country: "Europe",
+    flag: "🇪🇺",
+    toDollarRate: 1.0482638,
+  },
+  {
+    sign: "USD",
+    name: "Dollar",
+    country: "United States",
+    flag: "🇺🇸",
+    toDollarRate: 1.0,
+  },
+  {
+    sign: "MRU",
+    name: "Muritanian Ouguiya",
+    country: "Muritania",
+    flag: "🇲🇷",
+    toDollarRate: 0.024940481,
+  },
+  {
+    sign: "SAR",
+    name: "Saudi Arabian Riyal",
+    country: "Saudi Arabia",
+    flag: "🇸🇦",
+    toDollarRate: 0.26666667,
+  },
+  {
+    sign: "DZD",
+    name: "Algerian Dinar",
+    country: "Algeria",
+    flag: "🇩🇿",
+    toDollarRate: 0.0074261752,
+  },
+];
 
 function UserFormComponent({
   title,
@@ -87,7 +139,18 @@ function UserFormComponent({
 }
 function TransactionFormComponent() {
   const palette = useThemePalette();
+  let defaultCurrency: Currency = CURRENCIES[0];
   const [priceInputFocused, setPriceInputFocused] = useState(false);
+  const [currencies, setCurrencies] = useState(CURRENCIES);
+  const [selectedCurrency, setSelectedCurrency] = useState(defaultCurrency);
+  const [totalPrice, setTotalPrice] = useState(0);
+
+  const getExchangeRate = (from: Currency, to: Currency): number => {
+    const fromInUSD = 1 / from.toDollarRate;
+    const toInUSD = 1 / to.toDollarRate;
+    const exchangeRate = toInUSD / fromInUSD;
+    return Math.round(exchangeRate * 1e6) / 1e6;
+  };
   return (
     <View style={[styles.sectionContainer, { backgroundColor: palette.tint }]}>
       <LinearGradient
@@ -130,6 +193,9 @@ function TransactionFormComponent() {
             }}
             onFocus={() => setPriceInputFocused(true)}
             onBlur={() => setPriceInputFocused(false)}
+            onChangeText={(v) => {
+              setTotalPrice(parseFloat(v));
+            }}
           />
           <View style={{ width: "40%" }}>
             <Picker
@@ -141,19 +207,68 @@ function TransactionFormComponent() {
               mode="dropdown"
               onFocus={() => setPriceInputFocused(true)}
               onBlur={() => setPriceInputFocused(false)}
+              selectedValue={selectedCurrency}
+              onValueChange={setSelectedCurrency}
             >
-              <Picker.Item label="USD" value="usd" />
-              <Picker.Item label="EUR" value="eur" />
-              <Picker.Item label="TND" value="tnd" />
+              {currencies.map((c) => (
+                <Picker.Item label={c.sign} value={c} />
+              ))}
             </Picker>
           </View>
         </View>
-        <ThemedTextInput placeholder="سعر الصرف" keyboardType="numeric" />
+        <View>
+          <ThemedText
+            type="sm"
+            style={{
+              textAlign: "right",
+              paddingHorizontal: 10,
+              transform: "translateY(-10px)",
+            }}
+          >
+            {"1 " + selectedCurrency.sign} ={" "}
+            {getExchangeRate(selectedCurrency, defaultCurrency) +
+              " " +
+              defaultCurrency.sign}
+          </ThemedText>
+          {!isNaN(totalPrice) ? (
+            <ThemedText weight="semi-bold" style={{ color: palette.accent }}>
+              {totalPrice + " " + selectedCurrency.sign} ={" "}
+              {Math.round(
+                totalPrice *
+                  getExchangeRate(selectedCurrency, defaultCurrency) *
+                  1e6
+              ) /
+                1e6 +
+                " " +
+                defaultCurrency.sign}
+            </ThemedText>
+          ) : null}
+        </View>
+        <ThemedText type="subtitle" weight="semi-bold">
+          أستلام المبلغ
+        </ThemedText>
         <BouncyCheckbox
-          text="معاملة مدفوعة"
-          textStyle={{ textDecorationLine: "none", color: palette.text }}
+          text="كامل"
+          textStyle={{
+            textDecorationLine: "none",
+            color: palette.text,
+          }}
           fillColor={palette.accent}
         />
+        <View style={{ flexDirection: "row" }}>
+          <BouncyCheckbox
+            text="القسط الأول"
+            textStyle={{ textDecorationLine: "none", color: palette.text }}
+            style={{ width: "50%" }}
+            fillColor={palette.accent}
+          />
+          <ThemedTextInput
+            keyboardType="numeric"
+            style={{
+              width: "50%",
+            }}
+          />
+        </View>
       </View>
     </View>
   );
@@ -327,6 +442,15 @@ export default function AddTransactionScreen() {
             setAddress={setSenderAddress}
           />
           <TransactionFormComponent />,
+          <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>
+            <ThemedButton>
+              <ThemedText
+                style={{ textAlign: "center", color: palette.background }}
+              >
+                أرسل
+              </ThemedText>
+            </ThemedButton>
+          </View>
         </ThemedView>
       </ScrollView>
     </>
