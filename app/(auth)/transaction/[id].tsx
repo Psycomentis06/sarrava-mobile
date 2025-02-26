@@ -1,136 +1,221 @@
+import ArrowsExchange from "@/components/svg/ArrowsExchange";
+import ArrowV from "@/components/svg/ArrowV";
+import Exchange from "@/components/svg/Exchange";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
+import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { Stack, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { useWindowDimensions, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SceneMap, TabBar, TabView } from "react-native-tab-view";
 
-function TransactionTabView() {
-  const palette = useThemePalette();
-  const { id } = useLocalSearchParams();
-  return (
-    <ThemedView style={{ padding: 5 }}>
-      <View>
-        <View style={{ padding: 10, gap: 10 }}>
-          <ThemedText
-            type="sm"
-            style={{
-              opacity: 0.7,
-              marginHorizontal: 5,
-            }}
-          >
-            الرمز التعريفي : {id}
-          </ThemedText>
-
-          <ThemedText>
-            المبلغ:{" "}
-            <ThemedText type="xl" weight="semi-bold">
-              $320
-            </ThemedText>
-          </ThemedText>
-          <ThemedText>
-            التكلفة: <ThemedText>3.4%</ThemedText>
-          </ThemedText>
-          <ThemedText>
-            الحالة:{" "}
-            <ThemedText type="l" style={{ color: palette.error }}>
-              فشل
-            </ThemedText>
-          </ThemedText>
-          <ThemedText>
-            تاريخ: <ThemedText>2024-05-22</ThemedText>
-          </ThemedText>
-        </View>
-      </View>
-      <ThemedButton style={{ marginTop: 10 }}>
-        <ThemedText style={{ color: palette.background, textAlign: "center" }}>
-          أستخراج ملف PDF
-        </ThemedText>
-      </ThemedButton>
-    </ThemedView>
-  );
-}
-function TransactionSenderTabView() {
-  const palette = useThemePalette();
-  return (
-    <ThemedView style={{ padding: 5 }}>
-      <View>
-        <View style={{ padding: 10, gap: 10 }}>
-          <ThemedText type="sm" style={{ opacity: 0.7 }}>
-            المعرف: af33748a-3938-49f3
-          </ThemedText>
-          <ThemedText>نبيل ناصر</ThemedText>
-          <ThemedText>naser.nabil23@mail.co</ThemedText>
-          <ThemedText>21696150252+</ThemedText>
-          <ThemedText>
-            شارع الحبيب بورقيبة، حي الطيب المهيري، تونس العاصمة، تونس
-          </ThemedText>
-        </View>
-      </View>
-    </ThemedView>
-  );
-}
-function TransactionRecieverTabView() {
-  const palette = useThemePalette();
-  return (
-    <ThemedView style={{ padding: 5 }}>
-      <View>
-        <View style={{ padding: 10, gap: 10 }}>
-          <ThemedText type="sm" style={{ opacity: 0.7 }}>
-            المعرف: af33748a-3938-49f3
-          </ThemedText>
-          <ThemedText>نوري يعقوب</ThemedText>
-          <ThemedText>jacob.yakoub@giml.ru</ThemedText>
-          <ThemedText>213790920127+</ThemedText>
-          <ThemedText>
-            شارع محمد الخامس، حي بلوزداد، الجزائر العاصمة، الجزائر
-          </ThemedText>
-        </View>
-      </View>
-    </ThemedView>
-  );
-}
-const renderTabBar = (props: any) => {
-  const palette = useThemePalette();
-  return (
-    <TabBar
-      {...props}
-      indicatorStyle={{ backgroundColor: palette.tint }}
-      style={{ backgroundColor: palette.accent }}
-    />
-  );
-};
-
-const renderScene = SceneMap({
-  transaction: TransactionTabView,
-  sender: TransactionSenderTabView,
-  reciever: TransactionRecieverTabView,
-});
-const routes = [
-  { key: "transaction", title: "المعاملة" },
-  { key: "sender", title: "المرسل" },
-  { key: "reciever", title: "المستقبل" },
-];
-
 export default function TransactionDetailsScreen() {
-  const { id } = useLocalSearchParams();
-  const [index, setIndex] = useState(0);
-  const layout = useWindowDimensions();
   const palette = useThemePalette();
+  const { id } = useLocalSearchParams();
   return (
     <>
       <Stack.Screen options={{ title: "تفاصيل المعاملة" }} />
-      {/*
-       */}
-      <TabView
-        navigationState={{ index, routes }}
-        renderScene={renderScene}
-        onIndexChange={setIndex}
-        initialLayout={{ width: layout.width, height: layout.height }}
-        renderTabBar={renderTabBar}
-      />
+      <ScrollView>
+        <ThemedView style={{ padding: 10, backgroundColor: palette.tint }}>
+          <View
+            style={{
+              backgroundColor: "white",
+              padding: 10,
+              borderRadius: 10,
+            }}
+          >
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <ThemedText type="l" weight="bold">
+                ملخص المعاملة
+              </ThemedText>
+              <Pressable android_ripple={{ color: "rgba(0,0,0,0.26)" }}>
+                <IconSymbol
+                  name="square.and.arrow.down"
+                  size={24}
+                  color={palette.accent}
+                />
+              </Pressable>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 10,
+              }}
+            >
+              <ThemedText
+                weight="bold"
+                style={{
+                  color: palette.accent,
+                  width: "30%",
+                }}
+              >
+                عدد المعاملة
+              </ThemedText>
+              <ThemedText style={{ width: "50%" }}>#963258741</ThemedText>
+              <ThemedText type="sm">2025-02-18</ThemedText>
+            </View>
+            <View style={{ flexDirection: "row", marginTop: 10 }}>
+              <ThemedText
+                weight="bold"
+                style={{
+                  color: palette.accent,
+                  width: "30%",
+                }}
+              >
+                المستفيد
+              </ThemedText>
+              <View style={{ width: "70%" }}>
+                <ThemedText>أبراهيم ولد يوسف</ThemedText>
+                <ThemedText>+222 45 896 321</ThemedText>
+                <ThemedText>ibrahemweldyoussef@mail.com</ThemedText>
+                <ThemedText>حي الوحدة,نواكشوط, موريتانيا</ThemedText>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", marginTop: 10 }}>
+              <ThemedText
+                weight="bold"
+                style={{
+                  color: palette.accent,
+                  width: "30%",
+                }}
+              >
+                المرسل
+              </ThemedText>
+              <View style={{ width: "70%" }}>
+                <ThemedText>محمد أمين ولد الحاج</ThemedText>
+                <ThemedText>+222 45 900 300</ThemedText>
+                <ThemedText>mohamedamine@mail.com</ThemedText>
+                <ThemedText>
+                  شارع المقاومة, تفرغ زينة, نواكشوط, موريتانيا
+                </ThemedText>
+              </View>
+            </View>
+
+            {/*Separator*/}
+            <View
+              style={{
+                height: 5,
+                borderTopColor: "rgba(0,0,0,0.5)",
+                borderTopWidth: 0.75,
+                borderStyle: "dashed",
+                marginVertical: 20,
+              }}
+            />
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-evenly",
+                alignItems: "center",
+              }}
+            >
+              <ThemedText style={{ color: palette.accent, fontWeight: "600" }}>
+                المبلغ الجملي
+              </ThemedText>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View>
+                  <ThemedText type="l" style={{ color: palette.accent }}>
+                    3000 USD
+                  </ThemedText>
+                  <ThemedText type="md" style={{ color: palette.success }}>
+                    120460 MRU
+                  </ThemedText>
+                </View>
+                <IconSymbol
+                  name="arrow.up.arrow.down"
+                  size={20}
+                  color={palette.text}
+                />
+              </View>
+            </View>
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-evenly",
+                alignItems: "center",
+              }}
+            >
+              <ThemedText style={{ color: palette.accent, fontWeight: "600" }}>
+                تم أستلام القسط الأوّل بقيمة
+              </ThemedText>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View>
+                  <ThemedText type="l" style={{ color: palette.accent }}>
+                    1500 USD
+                  </ThemedText>
+                  <ThemedText type="md" style={{ color: palette.success }}>
+                    120460 MRU
+                  </ThemedText>
+                </View>
+                <IconSymbol
+                  name="arrow.up.arrow.down"
+                  size={20}
+                  color={palette.text}
+                />
+              </View>
+            </View>
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-evenly",
+                alignItems: "center",
+              }}
+            >
+              <ThemedText style={{ color: palette.accent, fontWeight: "600" }}>
+                المبلغ المتبقي
+              </ThemedText>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View>
+                  <ThemedText type="l" style={{ color: palette.error }}>
+                    1500 USD
+                  </ThemedText>
+                  <ThemedText type="md" style={{ color: palette.success }}>
+                    120460 MRU
+                  </ThemedText>
+                </View>
+                <IconSymbol
+                  name="arrow.up.arrow.down"
+                  size={20}
+                  color={palette.text}
+                />
+              </View>
+            </View>
+
+            <View
+              style={{
+                height: 5,
+                borderTopColor: "rgba(0,0,0,0.5)",
+                borderTopWidth: 0.75,
+                borderStyle: "dashed",
+                marginVertical: 20,
+              }}
+            />
+
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <ThemedText style={{ color: palette.accent, width: "60%" }}>
+                الرمز السرّي للمعاملة
+              </ThemedText>
+              <ThemedTextInput value="23796" keyboardType="numeric" />
+            </View>
+          </View>
+        </ThemedView>
+      </ScrollView>
     </>
   );
 }
