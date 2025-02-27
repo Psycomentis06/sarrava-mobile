@@ -23,7 +23,13 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-    Tajawal: require("../assets/fonts/Tajawal-Regular.ttf"),
+    Tajawal: require("../assets/fonts/tajawal/Tajawal-Regular.ttf"),
+    "Tajawal-ExtraLight": require("../assets/fonts/tajawal/Tajawal-ExtraLight.ttf"),
+    "Tajawal-Light": require("../assets/fonts/tajawal/Tajawal-Light.ttf"),
+    "Tajawal-Medium": require("../assets/fonts/tajawal/Tajawal-Medium.ttf"),
+    "Tajawal-Bold": require("../assets/fonts/tajawal/Tajawal-Bold.ttf"),
+    "Tajawal-Black": require("../assets/fonts/tajawal/Tajawal-Black.ttf"),
+    "Tajawal-ExtraBold": require("../assets/fonts/tajawal/Tajawal-ExtraBold.ttf"),
   });
   useEffect(() => {
     if (loaded) {
