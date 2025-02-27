@@ -17,7 +17,14 @@ export type ThemedTextProps = TextProps & {
     | "l"
     | "xl"
     | "xl2";
-  weight?: "regular" | "semi-bold" | "bold" | "thin" | "extra-thin";
+  weight?:
+    | "regular"
+    | "extra-bold"
+    | "bold"
+    | "light"
+    | "extra-light"
+    | "medium"
+    | "black";
   family?: string;
 };
 
@@ -49,10 +56,12 @@ export function ThemedText({
         type === "xl2" ? styles.xl2 : undefined,
 
         weight === "regular" ? styles.weightRegular : undefined,
-        weight === "thin" ? styles.weightThin : undefined,
-        weight === "extra-thin" ? styles.weightExtraThin : undefined,
+        weight === "light" ? styles.weightLight : undefined,
+        weight === "extra-light" ? styles.weightExtraLight : undefined,
         weight === "bold" ? styles.weightBold : undefined,
-        weight === "semi-bold" ? styles.weightSemiBold : undefined,
+        weight === "extra-bold" ? styles.weightExtraBold : undefined,
+        weight === "medium" ? styles.weightMedium : undefined,
+        weight === "black" ? styles.weightBlack : undefined,
         style,
       ]}
       {...rest}
@@ -68,16 +77,16 @@ const styles = StyleSheet.create({
   defaultSemiBold: {
     fontSize: 14,
     lineHeight: 24,
-    fontWeight: "600",
+    fontFamily: "Tajawal-Medium",
   },
   title: {
     fontSize: 32,
-    fontWeight: "bold",
+    fontFamily: "Tajawal-Bold",
     lineHeight: 32,
   },
   subtitle: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: "Tajawal-Bold",
   },
   link: {
     lineHeight: 30,
@@ -99,18 +108,29 @@ const styles = StyleSheet.create({
   xl: { fontSize: 20 },
   xl2: { fontSize: 24 },
   weightRegular: {
-    fontWeight: "regular",
+    // fontWeight: "regular",
+    fontFamily: "Tajawal-Regular",
   },
-  weightThin: {
-    fontWeight: "thin",
+  weightMedium: {
+    fontFamily: "Tajawal-Medium",
   },
-  weightExtraThin: {
-    fontWeight: "ultralight",
+  weightLight: {
+    // fontWeight: "thin",
+    fontFamily: "Tajawal-Thin",
   },
-  weightSemiBold: {
-    fontWeight: "semibold",
+  weightExtraLight: {
+    // fontWeight: "ultralight",
+    fontFamily: "Tajawal-ExtraLight",
   },
   weightBold: {
-    fontWeight: "bold",
+    // fontWeight: "semibold",
+    fontFamily: "Tajawal-Bold",
+  },
+  weightExtraBold: {
+    // fontWeight: "bold",
+    fontFamily: "Tajawal-ExtraBold",
+  },
+  weightBlack: {
+    fontFamily: "Tajawal-Black",
   },
 });
