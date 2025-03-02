@@ -78,7 +78,7 @@ export default function TransactionDetailsScreen() {
                 المستفيد
               </ThemedText>
               <View style={{ width: "70%" }}>
-                <ThemedText>أبراهيم ولد يوسف</ThemedText>
+                <ThemedText weight="medium">أبراهيم ولد يوسف</ThemedText>
                 <ThemedText>+222 45 896 321</ThemedText>
                 <ThemedText>ibrahemweldyoussef@mail.com</ThemedText>
                 <ThemedText>حي الوحدة,نواكشوط, موريتانيا</ThemedText>
@@ -119,19 +119,24 @@ export default function TransactionDetailsScreen() {
             <View
               style={{
                 flexDirection: "row",
-                justifyContent: "space-evenly",
+                justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
-              <ThemedText style={{ color: palette.accent, fontWeight: "600" }}>
+              <ThemedText weight="medium" style={{ color: palette.accent }}>
                 المبلغ الجملي
               </ThemedText>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <View>
-                  <ThemedText type="l" style={{ color: palette.accent }}>
+                  <ThemedText
+                    type="l"
+                    style={{ color: palette.accent, textAlign: "center" }}
+                  >
                     3000 USD
                   </ThemedText>
-                  <ThemedText type="md" style={{ color: palette.success }}>
+                  <ThemedText
+                    style={{ color: palette.success, textAlign: "center" }}
+                  >
                     120460 MRU
                   </ThemedText>
                 </View>
@@ -146,19 +151,24 @@ export default function TransactionDetailsScreen() {
             <View
               style={{
                 flexDirection: "row",
-                justifyContent: "space-evenly",
+                justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
-              <ThemedText style={{ color: palette.accent, fontWeight: "600" }}>
+              <ThemedText weight="medium" style={{ color: palette.accent }}>
                 تم أستلام القسط الأوّل بقيمة
               </ThemedText>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <View>
-                  <ThemedText type="l" style={{ color: palette.accent }}>
+                  <ThemedText
+                    type="l"
+                    style={{ color: palette.accent, textAlign: "center" }}
+                  >
                     1500 USD
                   </ThemedText>
-                  <ThemedText type="md" style={{ color: palette.success }}>
+                  <ThemedText
+                    style={{ color: palette.success, textAlign: "center" }}
+                  >
                     120460 MRU
                   </ThemedText>
                 </View>
@@ -173,19 +183,29 @@ export default function TransactionDetailsScreen() {
             <View
               style={{
                 flexDirection: "row",
-                justifyContent: "space-evenly",
+                justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
-              <ThemedText style={{ color: palette.accent, fontWeight: "600" }}>
+              <ThemedText weight="medium" style={{ color: palette.accent }}>
                 المبلغ المتبقي
               </ThemedText>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
                 <View>
-                  <ThemedText type="l" style={{ color: palette.error }}>
+                  <ThemedText
+                    type="l"
+                    style={{ color: palette.error, textAlign: "center" }}
+                  >
                     1500 USD
                   </ThemedText>
-                  <ThemedText type="md" style={{ color: palette.success }}>
+                  <ThemedText
+                    style={{ color: palette.success, textAlign: "center" }}
+                  >
                     120460 MRU
                   </ThemedText>
                 </View>

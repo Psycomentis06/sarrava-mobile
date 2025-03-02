@@ -210,7 +210,7 @@ export default function TransactionScreen() {
                     <ThemedText>{i.item.date}</ThemedText>
                   </View>
                   <View style={{ flexDirection: "row", gap: 5 }}>
-                    <ThemedText type="l" weight="bold">
+                    <ThemedText type="l" weight="medium">
                       {i.item.reciever.name}
                     </ThemedText>
                   </View>
@@ -218,6 +218,7 @@ export default function TransactionScreen() {
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
+                      marginVertical: 5,
                     }}
                   >
                     <View style={{ flexDirection: "row", gap: 5 }}>
@@ -225,8 +226,8 @@ export default function TransactionScreen() {
                         المبلغ:{"    "}
                       </ThemedText>
                       <ThemedText
-                        type="subtitle"
-                        weight="bold"
+                        weight="medium"
+                        type="l"
                         style={{ color: palette.accent }}
                       >
                         {i.item.currency.icon + "" + i.item.amount}
@@ -235,9 +236,9 @@ export default function TransactionScreen() {
                     <ThemedText style={{ textAlign: "right", opacity: 0.7 }}>
                       الحالة:{" "}
                       <ThemedText
+                        weight="medium"
                         style={{
                           color: getItemColorByStatus(i.item.status),
-                          fontWeight: "800",
                           fontSize: 14,
                         }}
                       >

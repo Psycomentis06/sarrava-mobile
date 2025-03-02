@@ -27,6 +27,7 @@ export default function RootLayout() {
     "Tajawal-ExtraLight": require("../assets/fonts/tajawal/Tajawal-ExtraLight.ttf"),
     "Tajawal-Light": require("../assets/fonts/tajawal/Tajawal-Light.ttf"),
     "Tajawal-Medium": require("../assets/fonts/tajawal/Tajawal-Medium.ttf"),
+    "Tajawal-Regular": require("../assets/fonts/tajawal/Tajawal-Regular.ttf"),
     "Tajawal-Bold": require("../assets/fonts/tajawal/Tajawal-Bold.ttf"),
     "Tajawal-Black": require("../assets/fonts/tajawal/Tajawal-Black.ttf"),
     "Tajawal-ExtraBold": require("../assets/fonts/tajawal/Tajawal-ExtraBold.ttf"),
