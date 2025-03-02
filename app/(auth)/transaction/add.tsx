@@ -23,8 +23,10 @@ type UserFormComponentProps = {
   title: string;
   email: string;
   setEmail: React.Dispatch<React.SetStateAction<string>>;
-  name: string;
-  setName: React.Dispatch<React.SetStateAction<string>>;
+  firstName: string;
+  setFirstName: React.Dispatch<React.SetStateAction<string>>;
+  lastName: string;
+  setLastName: React.Dispatch<React.SetStateAction<string>>;
   phone: string;
   setPhone: React.Dispatch<React.SetStateAction<string>>;
   address: string;
@@ -80,8 +82,10 @@ function UserFormComponent({
   title,
   email,
   setEmail,
-  name,
-  setName,
+  firstName,
+  setFirstName,
+  lastName,
+  setLastName,
   phone,
   setPhone,
   address,
@@ -110,10 +114,16 @@ function UserFormComponent({
       </LinearGradient>
       <View style={{ paddingTop: 10, gap: 15 }}>
         <ThemedTextInput
-          placeholder="الأسم الكامل"
+          placeholder="الأسم"
           autoComplete="name"
-          value={name}
-          onChangeText={setName}
+          value={firstName}
+          onChangeText={setFirstName}
+        />
+        <ThemedTextInput
+          placeholder="اللّقب"
+          autoComplete="name"
+          value={lastName}
+          onChangeText={setLastName}
         />
         <ThemedTextInput
           placeholder="بريد الألكتروني"
@@ -231,7 +241,7 @@ function TransactionFormComponent() {
               defaultCurrency.sign}
           </ThemedText>
           {!isNaN(totalPrice) ? (
-            <ThemedText weight="semi-bold" style={{ color: palette.accent }}>
+            <ThemedText weight="bold" style={{ color: palette.accent }}>
               {totalPrice + " " + selectedCurrency.sign} ={" "}
               {Math.round(
                 totalPrice *
@@ -244,7 +254,7 @@ function TransactionFormComponent() {
             </ThemedText>
           ) : null}
         </View>
-        <ThemedText type="subtitle" weight="semi-bold">
+        <ThemedText type="subtitle" weight="bold">
           أستلام المبلغ
         </ThemedText>
         <BouncyCheckbox
@@ -384,12 +394,14 @@ export function OverviewBeforeSubmit({
 export default function AddTransactionScreen() {
   const palette = useThemePalette();
   const [active, setActive] = useState(0);
-  const [senderName, setSenderName] = useState("");
+  const [senderFirstName, setSenderFirstName] = useState("");
+  const [senderLastName, setSenderLastName] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
   const [senderPhone, setSenderPhone] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
 
-  const [receiverName, setRecieverName] = useState("");
+  const [receiverFirstName, setRecieverFirstName] = useState("");
+  const [receiverLastName, setRecieverLastName] = useState("");
   const [receiverEmail, setRecieverEmail] = useState("");
   const [receiverPhone, setRecieverPhone] = useState("");
   const [receiverAddress, setRecieverAddress] = useState("");
@@ -398,11 +410,11 @@ export default function AddTransactionScreen() {
     <OverviewBeforeSubmit
       reciever={{
         email: receiverEmail,
-        name: receiverName,
+        name: receiverFirstName,
         phone: receiverPhone,
       }}
       sender={{
-        name: senderName,
+        name: senderFirstName,
         email: senderEmail,
         phone: senderPhone,
       }}
@@ -421,8 +433,10 @@ export default function AddTransactionScreen() {
         <ThemedView>
           <UserFormComponent
             title="المستفيد"
-            name={receiverName}
-            setName={setRecieverName}
+            firstName={receiverFirstName}
+            setFirstName={setRecieverFirstName}
+            lastName={receiverLastName}
+            setLastName={setRecieverLastName}
             email={receiverEmail}
             setEmail={setRecieverEmail}
             phone={receiverPhone}
@@ -432,8 +446,10 @@ export default function AddTransactionScreen() {
           />
           <UserFormComponent
             title="المرسل"
-            name={senderName}
-            setName={setSenderName}
+            firstName={senderFirstName}
+            setFirstName={setSenderFirstName}
+            lastName={senderLastName}
+            setLastName={setSenderLastName}
             email={senderEmail}
             setEmail={setSenderEmail}
             phone={senderPhone}
