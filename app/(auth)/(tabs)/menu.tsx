@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useSession } from "@/contexts/auth";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { useNavigation } from "expo-router";
 import React from "react";
@@ -8,6 +9,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function MoreOptions() {
+  const { signOut } = useSession();
   const navigation = useNavigation();
   const { tint, text, error } = useThemePalette();
   const insets = useSafeAreaInsets();
@@ -69,6 +71,7 @@ export default function MoreOptions() {
         <Pressable
           style={styles.menuItem}
           android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+          onPress={signOut}
         >
           <IconSymbol
             size={24}
