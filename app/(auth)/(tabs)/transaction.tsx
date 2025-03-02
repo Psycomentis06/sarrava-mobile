@@ -187,7 +187,7 @@ export default function TransactionScreen() {
           keyExtractor={(i) => i.id}
           renderItem={(i) => {
             return (
-              <View>
+              <View key={i.item.id}>
                 <Pressable
                   style={[
                     styles.transactionsListItem,
