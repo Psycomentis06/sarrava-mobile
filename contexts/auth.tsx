@@ -1,4 +1,5 @@
 import { useStorageState } from "@/hooks/useStorageState";
+import { useNavigation } from "expo-router";
 import { createContext, PropsWithChildren, useContext } from "react";
 
 const AuthContext = createContext<{
@@ -29,6 +30,7 @@ export function useSession() {
 
 export function AuthSessionProvider({ children }: PropsWithChildren) {
   const [[isLoading, session], setSession] = useStorageState("session");
+  const navigation = useNavigation();
 
   return (
     <AuthContext.Provider
@@ -36,10 +38,13 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
         signIn: () => {
           console.log("loging in");
           setSession("random-key");
+          console.log(navigation.getState());
+          navigation.navigate("(auth)" as never);
         },
         signOut: () => {
           console.log("Logged out");
           setSession(null);
+          navigation.navigate("auth/login" as never);
         },
         session,
         isLoading,
