@@ -38,7 +38,6 @@ export function ThemedText({
   ...rest
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
-
   return (
     <Text
       style={[
@@ -85,28 +84,29 @@ const styles = StyleSheet.create({
     lineHeight: 32,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: "Tajawal-Bold",
   },
   link: {
     lineHeight: 30,
-    fontSize: 14,
+    fontSize: 16,
     color: "#0a7ea4",
   },
   sm: {
-    fontSize: 10,
+    fontSize: 12,
     lineHeight: 20,
   },
   xs: {
-    fontSize: 8,
-    lineHeight: 18,
+    fontSize: 10,
+    lineHeight: 14,
   },
   md: {
-    fontSize: 13,
+    fontSize: 16,
+    lineHeight: 26,
   },
-  l: { fontSize: 16 },
-  xl: { fontSize: 20 },
-  xl2: { fontSize: 24 },
+  l: { fontSize: 18, lineHeight: 28 },
+  xl: { fontSize: 20, lineHeight: 30 },
+  xl2: { fontSize: 24, lineHeight: 34 },
   weightRegular: {
     // fontWeight: "regular",
     fontFamily: "Tajawal-Regular",
