@@ -1,0 +1,51 @@
+import * as z from "zod";
+
+export const newTransactionAgentSchema = z.object({
+  firstname: z
+    .string()
+    .nonempty({ message: "الاسم مطلوب" })
+    .min(2, { message: "الاسم يجب أن يتكون من حرفين على الأقل." }),
+  lastname: z
+    .string()
+    .nonempty({ message: "اللّقب مطلوب" })
+    .min(2, { message: "يجب أن يتكون اللقب من حرفين على الأقل." }),
+  email: z
+    .string()
+    .nonempty({ message: "البريد الألكتروني مطلوب" })
+    .email({ message: "عنوان البريد الإلكتروني غير صالح." }),
+  phone: z
+    .string()
+    .nonempty({ message: "رقم الهاتف مطلوب" })
+    .min(8, { message: "يجب أن يكون رقم الهاتف مكونًا من 8 أرقام على الأقل" }),
+  address: z.string().nonempty({ message: "العنوان مطلوب" }),
+});
+
+export const newTransactionPriceSchema = z.object({
+  totalPrice: z
+    .number()
+    .min(0, { message: "Price must be a positive number." }),
+  selectedCurrency: z.object({
+    sign: z.string(),
+    name: z.string(),
+    country: z.string(),
+    flag: z.string(),
+    toDollarRate: z.number(),
+  }),
+  isPaidFull: z.boolean(),
+  firstInstallment: z.number().optional(),
+});
+
+export const newTransactionSchema = z.object({
+  sender: newTransactionAgentSchema,
+  receiver: newTransactionAgentSchema,
+  price: newTransactionPriceSchema,
+});
+
+export type NewTransactionAgentSchemaType = z.infer<
+  typeof newTransactionAgentSchema
+>;
+export type NewTransactionPriceSchemaType = z.infer<
+  typeof newTransactionPriceSchema
+>;
+
+export type NewTransactionType = z.infer<typeof newTransactionSchema>;

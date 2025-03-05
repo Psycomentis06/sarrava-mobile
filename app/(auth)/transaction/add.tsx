@@ -10,6 +10,9 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { hexToRgba } from "@/utils/colors";
 import { ThemedButton } from "@/components/ThemedButton";
+import { Control, Controller, FormState, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
 
 type Currency = {
   sign: string;
@@ -21,16 +24,9 @@ type Currency = {
 
 type UserFormComponentProps = {
   title: string;
-  email: string;
-  setEmail: React.Dispatch<React.SetStateAction<string>>;
-  firstName: string;
-  setFirstName: React.Dispatch<React.SetStateAction<string>>;
-  lastName: string;
-  setLastName: React.Dispatch<React.SetStateAction<string>>;
-  phone: string;
-  setPhone: React.Dispatch<React.SetStateAction<string>>;
-  address: string;
-  setAddress: React.Dispatch<React.SetStateAction<string>>;
+  control: Control<NewTransactionType>;
+  formState: FormState<NewTransactionType>;
+  type: "sender" | "receiver";
 };
 
 const CURRENCIES: Currency[] = [
@@ -80,16 +76,9 @@ const CURRENCIES: Currency[] = [
 
 function UserFormComponent({
   title,
-  email,
-  setEmail,
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName,
-  phone,
-  setPhone,
-  address,
-  setAddress,
+  control,
+  formState,
+  type,
 }: UserFormComponentProps) {
   const palette = useThemePalette();
   return (
@@ -113,35 +102,99 @@ function UserFormComponent({
         </ThemedText>
       </LinearGradient>
       <View style={{ paddingTop: 10, gap: 15 }}>
-        <ThemedTextInput
-          placeholder="الأسم"
-          autoComplete="name"
-          value={firstName}
-          onChangeText={setFirstName}
+        <Controller
+          name={`${type}.firstname`}
+          control={control}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <ThemedTextInput
+              placeholder="الأسم"
+              autoComplete="name"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={
+                formState.isSubmitted
+                  ? formState.errors[type]?.firstname?.message
+                  : undefined
+              }
+            />
+          )}
         />
-        <ThemedTextInput
-          placeholder="اللّقب"
-          autoComplete="name"
-          value={lastName}
-          onChangeText={setLastName}
+
+        <Controller
+          name={`${type}.lastname`}
+          control={control}
+          render={({ field: { onBlur, onChange, value } }) => (
+            <ThemedTextInput
+              placeholder="اللّقب"
+              autoComplete="name"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={
+                formState.isSubmitted
+                  ? formState.errors[type]?.lastname?.message
+                  : undefined
+              }
+            />
+          )}
         />
-        <ThemedTextInput
-          placeholder="بريد الألكتروني"
-          autoComplete="email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
+
+        <Controller
+          name={`${type}.email`}
+          control={control}
+          render={({ field: { value, onChange, onBlur } }) => (
+            <ThemedTextInput
+              placeholder="بريد الألكتروني"
+              autoComplete="email"
+              keyboardType="email-address"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={
+                formState.isSubmitted
+                  ? formState.errors[type]?.email?.message
+                  : undefined
+              }
+            />
+          )}
         />
-        <ThemedTextInput
-          placeholder="رقم الهاتف"
-          keyboardType="phone-pad"
-          value={phone}
-          onChangeText={setPhone}
+
+        <Controller
+          name={`${type}.phone`}
+          control={control}
+          render={({ field: { value, onBlur, onChange } }) => (
+            <ThemedTextInput
+              placeholder="رقم الهاتف"
+              keyboardType="phone-pad"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={
+                formState.isSubmitted
+                  ? formState.errors[type]?.phone?.message
+                  : undefined
+              }
+            />
+          )}
         />
-        <ThemedTextInput
-          placeholder="العنوان"
-          value={address}
-          onChangeText={setAddress}
+
+        <Controller
+          name={`${type}.address`}
+          control={control}
+          render={({ field: { onBlur, onChange, value } }) => (
+            <ThemedTextInput
+              placeholder="العنوان"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={
+                formState.isSubmitted
+                  ? formState.errors[type]?.address?.message
+                  : undefined
+              }
+            />
+          )}
         />
       </View>
     </View>
@@ -221,7 +274,7 @@ function TransactionFormComponent() {
               onValueChange={setSelectedCurrency}
             >
               {currencies.map((c) => (
-                <Picker.Item label={c.sign} value={c} />
+                <Picker.Item key={c.name} label={c.sign} value={c} />
               ))}
             </Picker>
           </View>
@@ -393,73 +446,49 @@ export function OverviewBeforeSubmit({
 
 export default function AddTransactionScreen() {
   const palette = useThemePalette();
-  const [active, setActive] = useState(0);
-  const [senderFirstName, setSenderFirstName] = useState("");
-  const [senderLastName, setSenderLastName] = useState("");
-  const [senderEmail, setSenderEmail] = useState("");
-  const [senderPhone, setSenderPhone] = useState("");
-  const [senderAddress, setSenderAddress] = useState("");
+  const { control, formState, handleSubmit } = useForm<NewTransactionType>({
+    resolver: zodResolver(newTransactionSchema),
+    defaultValues: {
+      receiver: {
+        firstname: "",
+        lastname: "",
+        phone: "",
+        address: "",
+        email: "",
+      },
+      sender: {
+        firstname: "",
+        lastname: "",
+        email: "",
+        address: "",
+        phone: "",
+      },
+    },
+  });
+  const onSubmit = (data: NewTransactionType) => {
+    console.log(data);
+  };
 
-  const [receiverFirstName, setRecieverFirstName] = useState("");
-  const [receiverLastName, setRecieverLastName] = useState("");
-  const [receiverEmail, setRecieverEmail] = useState("");
-  const [receiverPhone, setRecieverPhone] = useState("");
-  const [receiverAddress, setRecieverAddress] = useState("");
-
-  const content = [
-    <OverviewBeforeSubmit
-      reciever={{
-        email: receiverEmail,
-        name: receiverFirstName,
-        phone: receiverPhone,
-      }}
-      sender={{
-        name: senderFirstName,
-        email: senderEmail,
-        phone: senderPhone,
-      }}
-      transaction={{
-        amount: 332,
-        currency: "$",
-        currencyExchange: 0.02,
-        paied: false,
-      }}
-    />,
-  ];
   return (
     <>
       <Stack.Screen options={{ title: "إرسال أموال" }} />
       <ScrollView>
         <ThemedView>
           <UserFormComponent
+            type="receiver"
+            control={control}
+            formState={formState}
             title="المستفيد"
-            firstName={receiverFirstName}
-            setFirstName={setRecieverFirstName}
-            lastName={receiverLastName}
-            setLastName={setRecieverLastName}
-            email={receiverEmail}
-            setEmail={setRecieverEmail}
-            phone={receiverPhone}
-            setPhone={setRecieverPhone}
-            address={receiverAddress}
-            setAddress={setRecieverAddress}
           />
           <UserFormComponent
+            type="sender"
+            control={control}
+            formState={formState}
             title="المرسل"
-            firstName={senderFirstName}
-            setFirstName={setSenderFirstName}
-            lastName={senderLastName}
-            setLastName={setSenderLastName}
-            email={senderEmail}
-            setEmail={setSenderEmail}
-            phone={senderPhone}
-            setPhone={setSenderPhone}
-            address={senderAddress}
-            setAddress={setSenderAddress}
           />
           <TransactionFormComponent />,
           <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>
-            <ThemedButton>
+            <ThemedButton onPress={handleSubmit(onSubmit)}>
               <ThemedText
                 style={{ textAlign: "center", color: palette.background }}
               >
