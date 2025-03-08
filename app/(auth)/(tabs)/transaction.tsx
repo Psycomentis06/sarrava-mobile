@@ -193,7 +193,11 @@ export default function TransactionScreen() {
                     styles.transactionsListItem,
                     { backgroundColor: palette.tint },
                   ]}
-                  android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+                  android_ripple={{
+                    color: "rgba(0,0,0,0.26)",
+                    foreground: true,
+                    borderless: false,
+                  }}
                   onPress={() => {
                     navigation.navigate("transaction/[id]", { id: i.item.id });
                   }}
