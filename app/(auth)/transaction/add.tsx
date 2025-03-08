@@ -6,13 +6,21 @@ import { useThemePalette } from "@/hooks/useThemePalette";
 import { Picker } from "@react-native-picker/picker";
 import { Stack } from "expo-router";
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { hexToRgba } from "@/utils/colors";
 import { ThemedButton } from "@/components/ThemedButton";
-import { Control, Controller, FormState, useForm } from "react-hook-form";
+import {
+  Control,
+  Controller,
+  FormState,
+  useForm,
+  UseFormWatch,
+  WatchObserver,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
+import { opacity } from "react-native-reanimated/lib/typescript/Colors";
 
 type Currency = {
   sign: string;
@@ -27,6 +35,12 @@ type UserFormComponentProps = {
   control: Control<NewTransactionType>;
   formState: FormState<NewTransactionType>;
   type: "sender" | "receiver";
+};
+
+type TransactionFormComponentProps = {
+  control: Control<NewTransactionType>;
+  formState: FormState<NewTransactionType>;
+  watch: UseFormWatch<NewTransactionType>;
 };
 
 const CURRENCIES: Currency[] = [
@@ -200,13 +214,18 @@ function UserFormComponent({
     </View>
   );
 }
-function TransactionFormComponent() {
+function TransactionFormComponent({
+  control,
+  formState,
+  watch,
+}: TransactionFormComponentProps) {
   const palette = useThemePalette();
   let defaultCurrency: Currency = CURRENCIES[0];
   const [priceInputFocused, setPriceInputFocused] = useState(false);
   const [currencies, setCurrencies] = useState(CURRENCIES);
-  const [selectedCurrency, setSelectedCurrency] = useState(defaultCurrency);
-  const [totalPrice, setTotalPrice] = useState(0);
+  const selectedCurrency = watch("price.selectedCurrency");
+  const totalPrice = watch("price.totalPrice");
+  const isPaidFull = watch("price.isPaidFull");
 
   const getExchangeRate = (from: Currency, to: Currency): number => {
     const fromInUSD = 1 / from.toDollarRate;
@@ -240,43 +259,62 @@ function TransactionFormComponent() {
             flexDirection: "row",
             borderWidth: 1,
             borderRadius: 10,
-            borderColor: priceInputFocused
+            borderColor: formState.errors.price?.totalPrice
+              ? palette.error
+              : priceInputFocused
               ? palette.accent
               : hexToRgba(palette.text, 0.3),
           }}
         >
-          <ThemedTextInput
-            placeholder="المبلغ الجملي"
-            keyboardType="numeric"
-            style={{
-              width: "60%",
-              borderWidth: 0,
-              borderLeftWidth: 1,
-              borderRadius: 0,
-            }}
-            onFocus={() => setPriceInputFocused(true)}
-            onBlur={() => setPriceInputFocused(false)}
-            onChangeText={(v) => {
-              setTotalPrice(parseFloat(v));
-            }}
+          <Controller
+            name="price.totalPrice"
+            control={control}
+            render={({ field: { onBlur, onChange, value } }) => (
+              <ThemedTextInput
+                value={value ? value.toString() : undefined}
+                placeholder="المبلغ الجملي"
+                keyboardType="numeric"
+                style={{
+                  width: "60%",
+                  borderWidth: 0,
+                  borderLeftWidth: 1,
+                  borderRadius: 0,
+                }}
+                onFocus={() => setPriceInputFocused(true)}
+                onBlur={() => {
+                  setPriceInputFocused(false);
+                  onBlur();
+                }}
+                onChangeText={onChange}
+              />
+            )}
           />
           <View style={{ width: "40%" }}>
-            <Picker
-              placeholder="العملة"
-              dropdownIconColor={palette.text}
-              style={{
-                color: palette.text,
-              }}
-              mode="dropdown"
-              onFocus={() => setPriceInputFocused(true)}
-              onBlur={() => setPriceInputFocused(false)}
-              selectedValue={selectedCurrency}
-              onValueChange={setSelectedCurrency}
-            >
-              {currencies.map((c) => (
-                <Picker.Item key={c.name} label={c.sign} value={c} />
-              ))}
-            </Picker>
+            <Controller
+              name="price.selectedCurrency"
+              control={control}
+              render={({ field: { value, onBlur, onChange } }) => (
+                <Picker
+                  placeholder="العملة"
+                  dropdownIconColor={palette.text}
+                  style={{
+                    color: palette.text,
+                  }}
+                  mode="dropdown"
+                  onFocus={() => setPriceInputFocused(true)}
+                  onBlur={() => {
+                    setPriceInputFocused(false);
+                    onBlur();
+                  }}
+                  selectedValue={value}
+                  onValueChange={onChange}
+                >
+                  {currencies.map((c) => (
+                    <Picker.Item key={c.name} label={c.sign} value={c} />
+                  ))}
+                </Picker>
+              )}
+            />
           </View>
         </View>
         <View>
@@ -293,7 +331,8 @@ function TransactionFormComponent() {
               " " +
               defaultCurrency.sign}
           </ThemedText>
-          {!isNaN(totalPrice) ? (
+          {!isNaN(totalPrice) &&
+          !formState.errors.price?.totalPrice?.message ? (
             <ThemedText weight="bold" style={{ color: palette.accent }}>
               {totalPrice + " " + selectedCurrency.sign} ={" "}
               {Math.round(
@@ -306,24 +345,48 @@ function TransactionFormComponent() {
                 defaultCurrency.sign}
             </ThemedText>
           ) : null}
+          {formState.errors.price?.totalPrice?.message && (
+            <ThemedText type="sm" style={{ color: palette.error }}>
+              {formState.errors.price.totalPrice.message}
+            </ThemedText>
+          )}
         </View>
         <ThemedText type="subtitle" weight="bold">
           أستلام المبلغ
         </ThemedText>
-        <BouncyCheckbox
-          text="كامل"
-          textStyle={{
-            textDecorationLine: "none",
-            color: palette.text,
-          }}
-          fillColor={palette.accent}
+        <Controller
+          name="price.isPaidFull"
+          control={control}
+          render={({ field: { value, onChange, onBlur } }) => (
+            <BouncyCheckbox
+              text="كامل"
+              textStyle={{
+                textDecorationLine: "none",
+                color: palette.text,
+                opacity: isPaidFull ? 1 : 0.7,
+              }}
+              fillColor={palette.accent}
+              isChecked={value}
+              onBlur={onBlur}
+              onPress={onChange}
+            />
+          )}
         />
-        <View style={{ flexDirection: "row" }}>
-          <BouncyCheckbox
-            text="القسط الأول"
-            textStyle={{ textDecorationLine: "none", color: palette.text }}
-            style={{ width: "50%" }}
-            fillColor={palette.accent}
+        <View style={{ flexDirection: "row", opacity: !isPaidFull ? 1 : 0.7 }}>
+          <Controller
+            name="price.isPaidFull"
+            control={control}
+            render={({ field: { value, onChange, onBlur } }) => (
+              <BouncyCheckbox
+                text="القسط الأول"
+                textStyle={{ textDecorationLine: "none", color: palette.text }}
+                style={{ width: "50%" }}
+                fillColor={palette.accent}
+                isChecked={!value}
+                onBlur={onBlur}
+                onPress={(isChecked) => onChange(!isChecked)}
+              />
+            )}
           />
           <ThemedTextInput
             keyboardType="numeric"
@@ -446,26 +509,36 @@ export function OverviewBeforeSubmit({
 
 export default function AddTransactionScreen() {
   const palette = useThemePalette();
-  const { control, formState, handleSubmit } = useForm<NewTransactionType>({
-    resolver: zodResolver(newTransactionSchema),
-    defaultValues: {
-      receiver: {
-        firstname: "",
-        lastname: "",
-        phone: "",
-        address: "",
-        email: "",
+  const { control, formState, handleSubmit, watch } =
+    useForm<NewTransactionType>({
+      resolver: zodResolver(newTransactionSchema),
+      defaultValues: {
+        receiver: {
+          firstname: "",
+          lastname: "",
+          phone: "",
+          address: "",
+          email: "",
+        },
+        sender: {
+          firstname: "",
+          lastname: "",
+          email: "",
+          address: "",
+          phone: "",
+        },
+        price: {
+          totalPrice: undefined,
+          selectedCurrency: CURRENCIES[0],
+          isPaidFull: true,
+          firstInstallment: undefined,
+        },
       },
-      sender: {
-        firstname: "",
-        lastname: "",
-        email: "",
-        address: "",
-        phone: "",
-      },
-    },
-  });
+    });
   const onSubmit = (data: NewTransactionType) => {
+    if (formState.isValid) {
+      Alert.alert("تم أرسال الأموال بنجاح");
+    }
     console.log(data);
   };
 
@@ -486,7 +559,12 @@ export default function AddTransactionScreen() {
             formState={formState}
             title="المرسل"
           />
-          <TransactionFormComponent />,
+          <TransactionFormComponent
+            control={control}
+            formState={formState}
+            watch={watch}
+          />
+          ,
           <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>
             <ThemedButton onPress={handleSubmit(onSubmit)}>
               <ThemedText

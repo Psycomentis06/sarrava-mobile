@@ -21,9 +21,10 @@ export const newTransactionAgentSchema = z.object({
 });
 
 export const newTransactionPriceSchema = z.object({
-  totalPrice: z
-    .number()
-    .min(0, { message: "Price must be a positive number." }),
+  totalPrice: z.coerce
+    .number({ message: "رقم السعر غير صالح" })
+    .nonnegative({ message: "السعر يجب أن يكون رقمًا موجبًا." })
+    .min(1, { message: "المبلغ يجب أن يكون 1" }),
   selectedCurrency: z.object({
     sign: z.string(),
     name: z.string(),
