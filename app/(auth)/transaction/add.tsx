@@ -536,10 +536,7 @@ export default function AddTransactionScreen() {
       },
     });
   const onSubmit = (data: NewTransactionType) => {
-    if (formState.isValid) {
-      Alert.alert("تم أرسال الأموال بنجاح");
-    }
-    console.log(data);
+    Alert.alert("تم أرسال الأموال بنجاح");
   };
 
   return (
