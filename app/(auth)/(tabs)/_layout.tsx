@@ -14,7 +14,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarLabelPosition: "beside-icon",
+        tabBarLabelPosition: "below-icon",
         tabBarStyle: Platform.select({
           ios: {
             // Use a transparent background on iOS to show the blur effect
@@ -45,6 +45,19 @@ export default function TabLayout() {
             <IconSymbol
               size={28}
               name="arrow.left.arrow.right.circle"
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="agent"
+        options={{
+          title: "الوكلاء",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol
+              size={28}
+              name="person.line.dotted.person.fill"
               color={color}
             />
           ),
