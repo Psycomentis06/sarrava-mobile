@@ -72,3 +72,13 @@ export const newAgentSchema = z.object({
 });
 
 export type NewAgentType = z.infer<typeof newAgentSchema>;
+
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .nonempty({ message: "مطلوب" })
+    .email({ message: "بريد ألكتروني غير صحيح" }),
+  password: z.string().nonempty({ message: "مطلوب" }),
+});
+
+export type LoginSchemaType = z.infer<typeof loginSchema>;

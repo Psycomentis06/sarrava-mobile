@@ -4,17 +4,27 @@ import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
+import { loginSchema, LoginSchemaType } from "@/utils/schemas";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigation } from "expo-router";
 import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { Alert, StyleSheet } from "react-native";
 
 export default function Login() {
   const navigation = useNavigation();
-  const [email, onEmailChange] = useState("");
-  const [password, onPasswordChange] = useState("");
+
+  const { control, handleSubmit } = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const palette = useThemePalette();
-  const login = async () => {
+  const login = async ({ email, password }: LoginSchemaType) => {
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -46,26 +56,42 @@ export default function Login() {
           تسجيل الدخول
         </ThemedText>
         <ThemedView style={styles.inputsContainer}>
-          <ThemedTextInput
-            onChangeText={onEmailChange}
-            value={email}
-            placeholder="البريد الألكتروني"
-            textAlign="right"
-            inputMode="email"
-            autoComplete="email"
-            maxLength={32}
+          <Controller
+            name="email"
+            control={control}
+            render={({ field: { value, onBlur, onChange }, fieldState }) => (
+              <ThemedTextInput
+                onChangeText={onChange}
+                value={value}
+                onBlur={onBlur}
+                placeholder="البريد الألكتروني"
+                textAlign="right"
+                inputMode="email"
+                autoComplete="email"
+                maxLength={32}
+                error={fieldState.error?.message}
+              />
+            )}
           />
-          <ThemedTextInput
-            onChangeText={onPasswordChange}
-            value={password}
-            textAlign="right"
-            placeholder="كلمة الدخول"
-            secureTextEntry={true}
-            maxLength={32}
+          <Controller
+            name="password"
+            control={control}
+            render={({ field: { value, onBlur, onChange }, fieldState }) => (
+              <ThemedTextInput
+                onChangeText={onChange}
+                value={value}
+                onBlur={onBlur}
+                textAlign="right"
+                placeholder="كلمة الدخول"
+                secureTextEntry={true}
+                maxLength={32}
+                error={fieldState.error?.message}
+              />
+            )}
           />
         </ThemedView>
         <ThemedButton
-          onPress={login}
+          onPress={handleSubmit(login)}
           disabled={isLoading}
           style={{ opacity: isLoading ? 0.6 : 1 }}
         >
