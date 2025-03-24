@@ -2,50 +2,55 @@ import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
-import { useSession } from "@/contexts/auth";
-import { validateEmail } from "@/services/validators";
+import { useThemePalette } from "@/hooks/useThemePalette";
+import { supabase } from "@/lib/supabase";
+import { useNavigation } from "expo-router";
 import { useState } from "react";
-import { Alert, Platform, StyleSheet } from "react-native";
+import { Alert, StyleSheet } from "react-native";
 
 export default function Login() {
-  const { signIn } = useSession();
+  const navigation = useNavigation();
   const [email, onEmailChange] = useState("");
   const [password, onPasswordChange] = useState("");
-  const login = () => {
-    if (!validateEmail(email)) {
-      if (Platform.OS === "web") {
-        alert("Invalid email address");
-      } else {
-        Alert.alert("Invalid Input", "Invalid email address");
+  const [isLoading, setIsLoading] = useState(false);
+  const palette = useThemePalette();
+  const login = async () => {
+    setIsLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      let msg = "";
+      switch (error.code) {
+        case "invalid_credentials":
+          msg = "المعطيات (بريد الألكتروني/كلمة السرّ) غير صحيحة";
+          break;
+        case "user_banned":
+          msg = "تمّ حظر حسابك. الرجاء الأتصال مع المسؤول";
+          break;
+        default:
+          msg = error.message;
       }
+      Alert.alert("فشل تسجيل الدخول", msg);
+      setIsLoading(false);
+      return;
     }
-
-    if (email === "demo@mail.co" && password === "demo") {
-      if (Platform.OS === "web") {
-        alert("You are logged in 😜");
-      } else {
-        signIn();
-        Alert.alert("Success", "You are logged in 😜");
-      }
-    } else {
-      if (Platform.OS === "web") {
-        alert("Invalid credentials");
-      } else {
-        Alert.alert("Not found", "Invalid credentials");
-      }
-    }
+    setIsLoading(false);
+    navigation.navigate("(auth)" as never);
   };
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.loginContainer}>
         <ThemedText type="title" style={styles.loginTitle}>
-          Login
+          تسجيل الدخول
         </ThemedText>
         <ThemedView style={styles.inputsContainer}>
           <ThemedTextInput
             onChangeText={onEmailChange}
             value={email}
-            placeholder="Email"
+            placeholder="البريد الألكتروني"
+            textAlign="right"
             inputMode="email"
             autoComplete="email"
             maxLength={32}
@@ -53,13 +58,22 @@ export default function Login() {
           <ThemedTextInput
             onChangeText={onPasswordChange}
             value={password}
-            placeholder="Password"
+            textAlign="right"
+            placeholder="كلمة الدخول"
             secureTextEntry={true}
             maxLength={32}
           />
         </ThemedView>
-        <ThemedButton onPress={login}>
-          <ThemedText>Login</ThemedText>
+        <ThemedButton
+          onPress={login}
+          disabled={isLoading}
+          style={{ opacity: isLoading ? 0.6 : 1 }}
+        >
+          <ThemedText
+            style={{ color: palette.background, textAlign: "center" }}
+          >
+            أرسل
+          </ThemedText>
         </ThemedButton>
       </ThemedView>
     </ThemedView>

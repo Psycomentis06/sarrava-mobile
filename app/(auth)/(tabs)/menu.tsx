@@ -1,15 +1,14 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { useSession } from "@/contexts/auth";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import { supabase } from "@/lib/supabase";
 import { useNavigation } from "expo-router";
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function MoreOptions() {
-  const { signOut } = useSession();
   const navigation = useNavigation();
   const { tint, text, error } = useThemePalette();
   const insets = useSafeAreaInsets();
@@ -29,6 +28,16 @@ export default function MoreOptions() {
       marginVertical: 1,
     },
   });
+
+  const signOut = async () => {
+    console.log("signout");
+    
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) {
+      Alert.alert("مشكل حدث أثناء تسجيل الخروج", error.message);
+    }
+    navigation.navigate("auth/login" as never)
+  };
 
   return (
     <ThemedView
