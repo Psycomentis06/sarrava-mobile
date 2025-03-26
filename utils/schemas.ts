@@ -82,3 +82,14 @@ export const loginSchema = z.object({
 });
 
 export type LoginSchemaType = z.infer<typeof loginSchema>;
+
+export const updateCurrencyRateSchema = z.object({
+  currencyRate: z.coerce
+    .number({ message: "رقم غير صالح" })
+    .nonnegative({ message: "المعدل ليس إيجابيا" })
+    .min(0, { message: "المعدل يجب أن يكون أكبر من 0" }),
+});
+
+export type UpdateCurrencyRateSchemaType = z.infer<
+  typeof updateCurrencyRateSchema
+>;
