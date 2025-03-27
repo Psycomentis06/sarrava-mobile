@@ -1,9 +1,11 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
+import { useUserProfile } from "@/contexts/profile";
 import { useSupabaseHasPermissions } from "@/hooks/useSupabaseHasPermissions";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
+import { hexToRgba } from "@/utils/colors";
 import { Currency } from "@/utils/models";
 import {
   updateCurrencyRateSchema,
@@ -27,16 +29,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 function CurrencyItem({
   currency,
   onLongPress,
+  selected,
 }: {
   currency?: Currency;
   onLongPress: (currency: Currency) => void;
+  selected?: boolean;
 }) {
   const palette = useThemePalette();
   return (
     <View style={{ borderRadius: 10, overflow: "hidden" }}>
       <Pressable
         style={{
-          backgroundColor: palette.tint,
+          backgroundColor: selected
+            ? hexToRgba(palette.success, 0.2)
+            : palette.tint,
           marginVertical: 5,
           paddingVertical: 10,
           paddingHorizontal: 10,
@@ -100,6 +106,7 @@ export default function CurrencyRatesScreen() {
   const { hasPermission: hasAdminPermission } = useSupabaseHasPermissions([
     "admin",
   ]);
+  const { profile: userProfile, updateProfile } = useUserProfile();
   const { control, handleSubmit, setValue, getValues } =
     useForm<UpdateCurrencyRateSchemaType>({
       resolver: zodResolver(updateCurrencyRateSchema),
@@ -133,12 +140,13 @@ export default function CurrencyRatesScreen() {
   };
 
   const handleSelectDefaultCurrency = () => {
-    // TODO: Implement setting default currency for logged-in user
     Alert.alert(
       "أختيار عملة الحساب",
       `تمّ أختيار ${selectedCurrency?.ar_name} كعملة أساسيّة`
     );
-    setIsContextMenuVisible(false);
+    updateProfile({ currency: selectedCurrency?.id }).then(() => {
+      setIsContextMenuVisible(false);
+    });
   };
 
   const handleUpdateRate = async (rate: UpdateCurrencyRateSchemaType) => {
@@ -160,19 +168,18 @@ export default function CurrencyRatesScreen() {
       return;
     }
     try {
-      const { error,status, statusText } = await supabase
+      const { error, status } = await supabase
         .from("currencies")
         .update({
           to_dollar_rate: getValues().currencyRate,
           updated_at: new Date(),
-          // TODO: After implementing user profile
-          // updated_by: ""
+          updated_by: userProfile?.firstname,
         })
         .eq("id", selectedCurrency?.id);
       if (error) {
-        let msg = error.message
+        let msg = error.message;
         if (status === 403) {
-          msg = "ليس لديك الصلاحيّة لتحديث سعر العملة"
+          msg = "ليس لديك الصلاحيّة لتحديث سعر العملة";
         }
         Alert.alert("فشل العملية", msg);
       }
@@ -181,7 +188,12 @@ export default function CurrencyRatesScreen() {
       setCurrencies((prev) =>
         prev.map((c) =>
           c.id === selectedCurrency?.id
-            ? { ...c, to_dollar_rate: getValues().currencyRate }
+            ? {
+                ...c,
+                to_dollar_rate: getValues().currencyRate,
+                updated_at: Date.now(),
+                updated_by: userProfile?.firstname ?? "",
+              }
             : c
         )
       );
@@ -325,7 +337,11 @@ export default function CurrencyRatesScreen() {
 
       <FlatList
         renderItem={({ item }) => (
-          <CurrencyItem currency={item} onLongPress={handleLongPress} />
+          <CurrencyItem
+            currency={item}
+            onLongPress={handleLongPress}
+            selected={item.id === userProfile?.currency}
+          />
         )}
         data={currencies}
         keyExtractor={(c) => String(c.id)}
