@@ -1,26 +1,25 @@
-import BouncyCheckbox from "react-native-bouncy-checkbox";
+import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
+import { useUserProfile } from "@/contexts/profile";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { Picker } from "@react-native-picker/picker";
-import { Stack } from "expo-router";
-import React, { useState } from "react";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { hexToRgba } from "@/utils/colors";
-import { ThemedButton } from "@/components/ThemedButton";
+import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Picker } from "@react-native-picker/picker";
+import { LinearGradient } from "expo-linear-gradient";
+import { Link, Stack } from "expo-router";
+import React, { useState } from "react";
 import {
   Control,
   Controller,
   FormState,
   useForm,
   UseFormWatch,
-  WatchObserver,
 } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
-import { opacity } from "react-native-reanimated/lib/typescript/Colors";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import BouncyCheckbox from "react-native-bouncy-checkbox";
 
 type Currency = {
   sign: string;
@@ -509,6 +508,7 @@ export function OverviewBeforeSubmit({
 
 export default function AddTransactionScreen() {
   const palette = useThemePalette();
+  const { profile } = useUserProfile();
   const { control, formState, handleSubmit, watch } =
     useForm<NewTransactionType>({
       resolver: zodResolver(newTransactionSchema),
@@ -544,6 +544,32 @@ export default function AddTransactionScreen() {
       <Stack.Screen options={{ title: "إرسال أموال" }} />
       <ScrollView>
         <ThemedView>
+          {profile && !profile.currency ? (
+            <ThemedText
+              type="md"
+              style={{
+                textAlign: "center",
+                color: palette.error,
+                backgroundColor: hexToRgba(palette.error, 0.1),
+                paddingVertical: 20,
+                paddingHorizontal: 10,
+                marginTop: 10,
+              }}
+            >
+              عذرًا، لا يمكنك إرسال الأموال لأنك لم تقم بتحديد عملة لحسابك بعد.
+              يُرجى الانتقال إلى صفحة{" "}
+              <Link
+                href="/(auth)/(tabs)/currency_rates"
+                style={{
+                  textDecorationStyle: "solid",
+                  textDecorationLine: "underline",
+                }}
+              >
+                أسعار العملات
+              </Link>{" "}
+              لاختيار العملة المفضلة.
+            </ThemedText>
+          ) : null}
           <UserFormComponent
             type="receiver"
             control={control}
