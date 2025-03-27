@@ -16,6 +16,19 @@ export type Currency = {
 };
 
 export type UserRolesView = {
-  id: string
-  roles: string[]
-}
+  id: string;
+  roles: string[];
+};
+
+export type UserProfile = {
+  id: string;
+  user_id: string;
+  firstname?: string | null;
+  lastname?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  created_at: string;
+  profile_picture?: string | null;
+  currency?: number | null;
+};
