@@ -69,6 +69,10 @@ export const newAgentSchema = z.object({
     .nonempty({ message: "رقم الهاتف مطلوب" })
     .min(8, { message: "يجب أن يكون رقم الهاتف مكونًا من 8 أرقام على الأقل" }),
   address: z.string().nonempty({ message: "العنوان مطلوب" }),
+  password: z
+    .string()
+    .nonempty({ message: "كلمة السرّ مطلوبة" })
+    .min(2, "كلمة السر يجب أن تحتوي على حرفين على الأقل"),
 });
 
 export type NewAgentType = z.infer<typeof newAgentSchema>;
