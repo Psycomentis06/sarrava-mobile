@@ -6,8 +6,7 @@ import React from "react";
 import {
   OpaqueColorValue,
   StyleProp,
-  TextStyle,
-  ViewStyle,
+  TextStyle
 } from "react-native";
 
 // Add your SFSymbol to MaterialIcons mappings here.
@@ -32,6 +31,7 @@ const MAPPING = {
   bell: "notifications",
   "square.and.arrow.down": "file-download",
   "arrow.up.arrow.down": "swap-vert",
+  "photo.fill": "add-photo-alternate",
 } as Partial<
   Record<
     import("expo-symbols").SymbolViewProps["name"],
