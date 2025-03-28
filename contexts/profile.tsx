@@ -72,7 +72,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (error) throw new Error(error.message);
         if (data) {
-          console.log("Profile loaded at " + Date.now().toLocaleString())
+          console.log("Profile loaded at " + new Date())
           await AsyncStorage.multiSet([
             [`user:${userId}:profile`, JSON.stringify(data)],
             [`user:${userId}:access_token`, accessToken],
