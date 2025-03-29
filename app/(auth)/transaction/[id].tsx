@@ -1,27 +1,17 @@
-import ArrowsExchange from "@/components/svg/ArrowsExchange";
-import ArrowV from "@/components/svg/ArrowV";
-import Exchange from "@/components/svg/Exchange";
-import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import { Transaction } from "@/utils/models";
 import { Stack, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import { SceneMap, TabBar, TabView } from "react-native-tab-view";
+import React from "react";
+import { Pressable, ScrollView, View } from "react-native";
 
 export default function TransactionDetailsScreen() {
   const palette = useThemePalette();
-  const { id } = useLocalSearchParams();
+  const { id, transaction } = useLocalSearchParams();
+  const tObj = JSON.parse(transaction as string) as Transaction;
   return (
     <>
       <Stack.Screen options={{ title: "تفاصيل المعاملة" }} />
@@ -64,8 +54,15 @@ export default function TransactionDetailsScreen() {
               >
                 عدد المعاملة
               </ThemedText>
-              <ThemedText style={{ width: "50%" }}>{"#" + id}</ThemedText>
-              <ThemedText type="sm">2025-02-18</ThemedText>
+              <ThemedText style={{ width: "70%" }}>{"#" + id}</ThemedText>
+            </View>
+            <View style={{ flexDirection: "row" }}>
+              <ThemedText weight="bold" style={{ width: "30%" }}>
+                بتاريخ :
+              </ThemedText>
+              <ThemedText>
+                {new Date(tObj.created_at).toLocaleString()}
+              </ThemedText>
             </View>
             <View style={{ flexDirection: "row", marginTop: 10 }}>
               <ThemedText
@@ -78,10 +75,10 @@ export default function TransactionDetailsScreen() {
                 المستفيد
               </ThemedText>
               <View style={{ width: "70%" }}>
-                <ThemedText weight="medium">أبراهيم ولد يوسف</ThemedText>
-                <ThemedText>+222 45 896 321</ThemedText>
-                <ThemedText>ibrahemweldyoussef@mail.com</ThemedText>
-                <ThemedText>حي الوحدة,نواكشوط, موريتانيا</ThemedText>
+                <ThemedText weight="medium">{`${tObj.receiver?.firstname} ${tObj.receiver?.lastname}`}</ThemedText>
+                <ThemedText>{tObj.receiver?.phone}</ThemedText>
+                <ThemedText>{tObj.receiver?.email}</ThemedText>
+                <ThemedText>{tObj.receiver?.address}</ThemedText>
               </View>
             </View>
 
@@ -96,12 +93,10 @@ export default function TransactionDetailsScreen() {
                 المرسل
               </ThemedText>
               <View style={{ width: "70%" }}>
-                <ThemedText>محمد أمين ولد الحاج</ThemedText>
-                <ThemedText>+222 45 900 300</ThemedText>
-                <ThemedText>mohamedamine@mail.com</ThemedText>
-                <ThemedText>
-                  شارع المقاومة, تفرغ زينة, نواكشوط, موريتانيا
-                </ThemedText>
+                <ThemedText>{`${tObj.sender?.firstname} ${tObj.sender?.lastname}`}</ThemedText>
+                <ThemedText>{tObj.sender?.phone}</ThemedText>
+                <ThemedText>{tObj.sender?.email}</ThemedText>
+                <ThemedText>{tObj.sender?.address}</ThemedText>
               </View>
             </View>
 
@@ -132,12 +127,14 @@ export default function TransactionDetailsScreen() {
                     type="l"
                     style={{ color: palette.accent, textAlign: "center" }}
                   >
-                    3000 USD
+                    {`${Math.round(tObj.amount_usd)} USD`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
                   >
-                    120460 MRU
+                    {`${Math.round(tObj.original_amount)} ${
+                      tObj.currency.sign
+                    }`}
                   </ThemedText>
                 </View>
                 <IconSymbol
@@ -156,7 +153,9 @@ export default function TransactionDetailsScreen() {
               }}
             >
               <ThemedText weight="medium" style={{ color: palette.accent }}>
-                تم أستلام القسط الأوّل بقيمة
+                {tObj.is_paid_full
+                  ? "تم أستلام المبلغ كاملا"
+                  : "تم أستلام القسط الأوّل بقيمة"}
               </ThemedText>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <View>
@@ -164,12 +163,22 @@ export default function TransactionDetailsScreen() {
                     type="l"
                     style={{ color: palette.accent, textAlign: "center" }}
                   >
-                    1500 USD
+                    {tObj.is_paid_full
+                      ? `${Math.round(tObj.amount_usd)} USD`
+                      : `${Math.round(
+                          tObj.first_installment ?? 0 * tObj.exchange_rate
+                        )} USD`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
                   >
-                    120460 MRU
+                    {tObj.is_paid_full
+                      ? `${Math.round(tObj.original_amount)} ${
+                          tObj.currency.sign
+                        }`
+                      : `${Math.round(tObj.first_installment ?? 0)} ${
+                          tObj.currency.sign
+                        }`}
                   </ThemedText>
                 </View>
                 <IconSymbol
@@ -201,12 +210,21 @@ export default function TransactionDetailsScreen() {
                     type="l"
                     style={{ color: palette.error, textAlign: "center" }}
                   >
-                    1500 USD
+                    {tObj.is_paid_full
+                      ? "0"
+                      : `${Math.round(
+                          tObj.amount_usd -
+                            (tObj.first_installment ?? 0 * tObj.exchange_rate)
+                        )} USD`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
                   >
-                    120460 MRU
+                    {tObj.is_paid_full
+                      ? `0 ${tObj.currency.sign}`
+                      : `${Math.round(
+                          tObj.original_amount - (tObj.first_installment ?? 0)
+                        )} ${tObj.currency.sign}`}
                   </ThemedText>
                 </View>
                 <IconSymbol
@@ -231,7 +249,7 @@ export default function TransactionDetailsScreen() {
               <ThemedText style={{ color: palette.accent, width: "60%" }}>
                 الرمز السرّي للمعاملة
               </ThemedText>
-              <ThemedTextInput value="23796" keyboardType="numeric" />
+              <ThemedTextInput value={tObj.pin_code?.toString()} keyboardType="numeric" />
             </View>
           </View>
         </ThemedView>

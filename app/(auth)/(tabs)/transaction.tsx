@@ -155,7 +155,8 @@ export default function TransactionScreen() {
                     borderless: false,
                   }}
                   onPress={() => {
-                    navigation.navigate("transaction/[id]", { id: i.item.id });
+                    router.push({pathname: '/transaction/[id]', params: {id: i.item.id, transaction: JSON.stringify(i.item)}})
+                    // navigation.navigate("transaction/[id]", { id: i.item.id });
                   }}
                 >
                   <View
