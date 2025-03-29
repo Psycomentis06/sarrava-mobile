@@ -20,15 +20,44 @@ export const newTransactionAgentSchema = z.object({
   address: z.string().nonempty({ message: "العنوان مطلوب" }),
 });
 
-export const newTransactionPriceSchema = z.object({
-  totalPrice: z.coerce
-    .number({ message: "رقم السعر غير صالح" })
-    .nonnegative({ message: "السعر يجب أن يكون رقمًا موجبًا." })
-    .min(1, { message: "المبلغ يجب أن يكون 1" }),
-  selectedCurrency: z.any(),
-  isPaidFull: z.boolean(),
-  firstInstallment: z.number().optional(),
-});
+export const newTransactionPriceSchema = z
+  .object({
+    totalPrice: z.coerce
+      .number({ message: "رقم السعر غير صالح" })
+      .nonnegative({ message: "السعر يجب أن يكون رقمًا موجبًا." })
+      .min(1, { message: "المبلغ يجب أن يكون 1" }),
+    selectedCurrency: z.any(),
+    isPaidFull: z.boolean(),
+    firstInstallment: z.number().optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.isPaidFull && !data.firstInstallment) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "يجب تحديد الدفعة الأولى عندما لا يتم الدفع بالكامل.",
+      path: ["firstInstallment"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (
+        !data.isPaidFull &&
+        data.firstInstallment &&
+        data.firstInstallment > data.totalPrice
+      ) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "يجب أن تكون الدفعة الأولى أقل من أو تساوي السعر الإجمالي.",
+      path: ["firstInstallment"],
+    }
+  );
 
 export const newTransactionSchema = z.object({
   sender: newTransactionAgentSchema,

@@ -224,10 +224,12 @@ function TransactionFormComponent({
                 value={value ? value.toString() : undefined}
                 placeholder="المبلغ الجملي"
                 keyboardType="numeric"
-                style={{
-                  width: "60%",
-                  borderWidth: 0,
+                containerStyle={{
                   borderLeftWidth: 1,
+                  width: "60%",
+                }}
+                style={{
+                  borderWidth: 0,
                   borderRadius: 0,
                 }}
                 onFocus={() => setPriceInputFocused(true)}
@@ -315,7 +317,7 @@ function TransactionFormComponent({
               textStyle={{
                 textDecorationLine: "none",
                 color: palette.text,
-                opacity: isPaidFull ? 1 : 0.7,
+                opacity: isPaidFull ? 1 : 0.5,
               }}
               fillColor={palette.accent}
               isChecked={value}
@@ -324,7 +326,13 @@ function TransactionFormComponent({
             />
           )}
         />
-        <View style={{ flexDirection: "row", opacity: !isPaidFull ? 1 : 0.7 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            opacity: !isPaidFull ? 1 : 0.5,
+          }}
+        >
           <Controller
             name="price.isPaidFull"
             control={control}
@@ -340,11 +348,20 @@ function TransactionFormComponent({
               />
             )}
           />
-          <ThemedTextInput
-            keyboardType="numeric"
-            style={{
-              width: "50%",
-            }}
+          <Controller
+            control={control}
+            name="price.firstInstallment"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <ThemedTextInput
+                style={{ width: "60%" }}
+                keyboardType="numeric"
+                value={value?.toString()}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={formState.errors.price?.firstInstallment?.message}
+                errorStyle={{width: '60%'}}
+              />
+            )}
           />
         </View>
       </View>
