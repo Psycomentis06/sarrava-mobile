@@ -1,21 +1,23 @@
-import {
-  TextInputProps,
-  TextInput,
-  StyleSheet,
-  Platform,
-  View,
-} from "react-native";
-import { useThemeColor } from "@/hooks/useThemeColor";
-import { useState } from "react";
-import { hexToRgba } from "@/utils/colors";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import { hexToRgba } from "@/utils/colors";
+import React, { useState } from "react";
+import {
+  StyleProp,
+  StyleSheet,
+  TextInput,
+  TextInputProps,
+  TextStyle,
+  View,
+  ViewStyle
+} from "react-native";
 import { ThemedText } from "./ThemedText";
-import React from "react";
 
 export type ThemedTextInputProps = TextInputProps & {
   lightColor?: string;
   darkColor?: string;
   error?: string;
+  containerStyle?: StyleProp<ViewStyle>
+  errorStyle?: StyleProp<TextStyle>
 };
 
 export function ThemedTextInput({
@@ -25,13 +27,15 @@ export function ThemedTextInput({
   error,
   onBlur: externalOnBlur,
   onFocus: externalOnFocus,
+  containerStyle,
+  errorStyle,
   ...rest
 }: ThemedTextInputProps) {
   const palette = useThemePalette();
   const [focused, setFocused] = useState(false);
 
   return (
-    <>
+    <View style={[containerStyle, {justifyContent: 'center'}]} >
       <TextInput
         onFocus={(e) => {
           setFocused(true);
@@ -62,12 +66,12 @@ export function ThemedTextInput({
       {error && (
         <ThemedText
           type="sm"
-          style={{ color: palette.error, transform: "translateY(-15px)" }}
+          style={[ {color: palette.error, flexShrink: 1}, errorStyle ]}
         >
           {error}
         </ThemedText>
       )}
-    </>
+    </View>
   );
 }
 
