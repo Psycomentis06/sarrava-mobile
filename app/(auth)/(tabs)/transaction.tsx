@@ -2,145 +2,101 @@ import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
-import { useThemePalette } from "@/hooks/useThemePalette";
-import { useNavigation } from "expo-router";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { hexToRgba } from "@/utils/colors";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-
-const DATA = [
-  {
-    id: "123456-123456-123456",
-    date: "2024-09-23",
-    amount: 208,
-    currency: {
-      name: "dollar",
-      icon: "$",
-    },
-    fee: 0.2,
-    status: "VALIDATED",
-    reciever: {
-      name: "علي الحسن",
-      address: "5 شارع النخيل",
-    },
-    sender: {
-      name: "فاطمة الزهراء",
-      address: "شارع الورد",
-    },
-  },
-  {
-    id: "123456-789012-345678",
-    date: "2024-09-22",
-    amount: 145,
-    currency: {
-      name: "euro",
-      icon: "€",
-    },
-    fee: 0.15,
-    status: "VALIDATED",
-    reciever: {
-      name: "ليلى العلي",
-      address: "42 شارع البلوط",
-    },
-    sender: {
-      name: "يوسف محمد",
-      address: "123 شارع القيقب",
-    },
-  },
-  {
-    id: "987654-321098-765432",
-    date: "2024-09-21",
-    amount: 375,
-    currency: {
-      name: "pound",
-      icon: "£",
-    },
-    fee: 0.25,
-    status: "CANCELED",
-    reciever: {
-      name: "إيهاب السعيد",
-      address: "89 شارع الحديقة",
-    },
-    sender: {
-      name: "سارة أحمد",
-      address: "456 شارع برودواي",
-    },
-  },
-  {
-    id: "456789-234567-890123",
-    date: "2024-09-20",
-    amount: 92,
-    currency: {
-      name: "yen",
-      icon: "¥",
-    },
-    fee: 0.1,
-    status: "VALIDATED",
-    reciever: {
-      name: "أحمد سعيد",
-      address: "67 شارع الأرز",
-    },
-    sender: {
-      name: "صوفيا علي",
-      address: "901 شارع الصنوبر",
-    },
-  },
-  {
-    id: "789012-345678-901234",
-    date: "2024-09-19",
-    amount: 278,
-    currency: {
-      name: "franc",
-      icon: "₣",
-    },
-    fee: 0.22,
-    status: "CANCELED",
-    reciever: {
-      name: "وليد الطيب",
-      address: "34 شارع البلوط",
-    },
-    sender: {
-      name: "شارلوت حسن",
-      address: "678 شارع الكرز",
-    },
-  },
-  {
-    id: "234567-890123-456789",
-    date: "2024-09-18",
-    amount: 167,
-    currency: {
-      name: "rupee",
-      icon: "₹",
-    },
-    fee: 0.18,
-    status: "FAILED",
-    reciever: {
-      name: "جمال الدين",
-      address: "56 شارع الجوز",
-    },
-    sender: {
-      name: "أبيغيل عادل",
-      address: "234 شارع التنوب",
-    },
-  },
-];
+import { UseSupabaseSession } from "@/hooks/useSupabaseSession";
+import { useThemePalette } from "@/hooks/useThemePalette";
+import { supabase } from "@/lib/supabase";
+import { Transaction, TransactionStatus } from "@/utils/models";
+import { useNavigation, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TransactionScreen() {
   const insets = useSafeAreaInsets();
   const palette = useThemePalette();
   const navigation = useNavigation();
+  const router = useRouter();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isSessionLoading, session] = UseSupabaseSession();
 
-  const getItemColorByStatus = (status: string) => {
+  const getItemColorByStatus = (status: TransactionStatus) => {
     switch (status) {
-      case "FAILED":
+      case TransactionStatus.FAILED:
         return palette.error;
-      case "CANCELED":
+      case TransactionStatus.CANCELED:
         return palette.warn;
-      default:
+      case TransactionStatus.CONFIRMED:
         return palette.success;
+      case TransactionStatus.PENDING:
+        return palette.accent;
+      default:
+        return palette.accent;
     }
   };
+
+  const getTransactionArabicStatus = (status: TransactionStatus): string => {
+    switch (status) {
+      case TransactionStatus.FAILED:
+        return "فشلة";
+      case TransactionStatus.CANCELED:
+        return "ألغيت";
+      case TransactionStatus.CONFIRMED:
+        return "مكتملة";
+      case TransactionStatus.PENDING:
+        return "قيد الانتظار";
+      default:
+        return "غير مصنف";
+    }
+  };
+
+  const getTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(
+          `
+           *,
+          currency:currency_id (
+            id,
+            name,
+            sign,
+            to_dollar_rate,
+            country,
+            flag,
+            created_at,
+            updated_at,
+            updated_by,
+            ar_name,
+            country_code,
+            flag_url
+          )
+          `
+        )
+        .eq("created_by", session?.user.id)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        Alert.alert("خطأ", "حدث خطأ ما أثناء تحميل المعلومات");
+        console.error(error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setTransactions(data);
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("خطأ", "حدث خطأ ما أثناء تحميل المعلومات");
+      return;
+    }
+  };
+
+  useEffect(() => {
+    if (session !== null) {
+      getTransactions();
+    }
+  }, [session]);
 
   return (
     <ThemedView
@@ -165,7 +121,7 @@ export default function TransactionScreen() {
           <ThemedTextInput placeholder="بحث" style={{ width: "75%" }} />
           <ThemedButton
             style={{ width: 45, borderRadius: "50%" }}
-            onPress={() => navigation.navigate("transaction/add" as never)}
+            onPress={() => router.navigate("/(auth)/transaction/add")}
           >
             <ThemedText>
               <IconSymbol
@@ -183,7 +139,7 @@ export default function TransactionScreen() {
             flexGrow: 1,
             paddingBottom: 20,
           }}
-          data={DATA}
+          data={transactions}
           keyExtractor={(i) => i.id}
           renderItem={(i) => {
             return (
@@ -206,16 +162,19 @@ export default function TransactionScreen() {
                     style={{
                       justifyContent: "space-between",
                       flexDirection: "row",
+                      alignItems: 'center'
                     }}
                   >
-                    <ThemedText type="sm" style={{ opacity: 0.7 }}>
+                    <ThemedText type="xs" style={{ opacity: 0.7 }}>
                       {"#" + i.item.id}
                     </ThemedText>
-                    <ThemedText>{i.item.date}</ThemedText>
+                    <ThemedText type="sm">{new Date(i.item.created_at).toLocaleString()}</ThemedText>
                   </View>
                   <View style={{ flexDirection: "row", gap: 5 }}>
                     <ThemedText type="l" weight="medium">
-                      {i.item.reciever.name}
+                      {i.item.receiver?.firstname +
+                        " " +
+                        i.item.receiver?.lastname}
                     </ThemedText>
                   </View>
                   <View
@@ -225,7 +184,13 @@ export default function TransactionScreen() {
                       marginVertical: 5,
                     }}
                   >
-                    <View style={{ flexDirection: "row", gap: 5 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 5,
+                        alignItems: "flex-end",
+                      }}
+                    >
                       <ThemedText style={{ opacity: 0.7 }}>
                         المبلغ:{"    "}
                       </ThemedText>
@@ -234,7 +199,7 @@ export default function TransactionScreen() {
                         type="l"
                         style={{ color: palette.accent }}
                       >
-                        {i.item.currency.icon + "" + i.item.amount}
+                        {i.item.original_amount + " " + i.item.currency.sign}
                       </ThemedText>
                     </View>
                     <ThemedText style={{ textAlign: "right", opacity: 0.7 }}>
@@ -246,13 +211,7 @@ export default function TransactionScreen() {
                           fontSize: 14,
                         }}
                       >
-                        {i.item.status === "VALIDATED"
-                          ? "مكتملة"
-                          : i.item.status === "FAILED"
-                          ? "فشلة"
-                          : i.item.status === "CANCELED"
-                          ? "غير مكتملة"
-                          : "غير مصنف"}
+                        {getTransactionArabicStatus(i.item.status)}
                       </ThemedText>
                     </ThemedText>
                   </View>
