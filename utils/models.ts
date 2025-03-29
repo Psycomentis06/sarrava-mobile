@@ -10,9 +10,9 @@ export type Currency = {
   country_code: string;
   flag: string;
   flag_url: string;
-  created_at: number;
-  updated_at: number;
-  updated_by: string;
+  created_at: string|null;
+  updated_at: string|null;
+  updated_by: string |null;
 };
 
 export type UserRolesView = {

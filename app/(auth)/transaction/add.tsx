@@ -4,13 +4,15 @@ import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { useUserProfile } from "@/contexts/profile";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import { supabase } from "@/lib/supabase";
 import { hexToRgba } from "@/utils/colors";
+import { Currency } from "@/utils/models";
 import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { Link, Stack } from "expo-router";
-import React, { useState } from "react";
+import { Link, Stack, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   Control,
   Controller,
@@ -20,14 +22,6 @@ import {
 } from "react-hook-form";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import BouncyCheckbox from "react-native-bouncy-checkbox";
-
-type Currency = {
-  sign: string;
-  name: string;
-  country: string;
-  flag: string;
-  toDollarRate: number;
-};
 
 type UserFormComponentProps = {
   title: string;
@@ -40,52 +34,9 @@ type TransactionFormComponentProps = {
   control: Control<NewTransactionType>;
   formState: FormState<NewTransactionType>;
   watch: UseFormWatch<NewTransactionType>;
+  currencies: Currency[];
+  defaultCurrency?: Currency;
 };
-
-const CURRENCIES: Currency[] = [
-  {
-    sign: "TND",
-    name: "Tunisian Dinar",
-    country: "Tunisia",
-    flag: "🇹🇳",
-    toDollarRate: 0.31679218,
-  },
-  {
-    sign: "EUR",
-    name: "Euro",
-    country: "Europe",
-    flag: "🇪🇺",
-    toDollarRate: 1.0482638,
-  },
-  {
-    sign: "USD",
-    name: "Dollar",
-    country: "United States",
-    flag: "🇺🇸",
-    toDollarRate: 1.0,
-  },
-  {
-    sign: "MRU",
-    name: "Muritanian Ouguiya",
-    country: "Muritania",
-    flag: "🇲🇷",
-    toDollarRate: 0.024940481,
-  },
-  {
-    sign: "SAR",
-    name: "Saudi Arabian Riyal",
-    country: "Saudi Arabia",
-    flag: "🇸🇦",
-    toDollarRate: 0.26666667,
-  },
-  {
-    sign: "DZD",
-    name: "Algerian Dinar",
-    country: "Algeria",
-    flag: "🇩🇿",
-    toDollarRate: 0.0074261752,
-  },
-];
 
 function UserFormComponent({
   title,
@@ -217,18 +168,18 @@ function TransactionFormComponent({
   control,
   formState,
   watch,
+  currencies,
+  defaultCurrency,
 }: TransactionFormComponentProps) {
   const palette = useThemePalette();
-  let defaultCurrency: Currency = CURRENCIES[0];
   const [priceInputFocused, setPriceInputFocused] = useState(false);
-  const [currencies, setCurrencies] = useState(CURRENCIES);
-  const selectedCurrency = watch("price.selectedCurrency");
+  const selectedCurrency = watch("price.selectedCurrency") as Currency;
   const totalPrice = watch("price.totalPrice");
   const isPaidFull = watch("price.isPaidFull");
 
   const getExchangeRate = (from: Currency, to: Currency): number => {
-    const fromInUSD = 1 / from.toDollarRate;
-    const toInUSD = 1 / to.toDollarRate;
+    const fromInUSD = 1 / from.to_dollar_rate;
+    const toInUSD = 1 / to.to_dollar_rate;
     const exchangeRate = toInUSD / fromInUSD;
     return Math.round(exchangeRate * 1e6) / 1e6;
   };
@@ -316,40 +267,42 @@ function TransactionFormComponent({
             />
           </View>
         </View>
-        <View>
-          <ThemedText
-            type="sm"
-            style={{
-              textAlign: "right",
-              paddingHorizontal: 10,
-              transform: "translateY(-10px)",
-            }}
-          >
-            {"1 " + selectedCurrency.sign} ={" "}
-            {getExchangeRate(selectedCurrency, defaultCurrency) +
-              " " +
-              defaultCurrency.sign}
-          </ThemedText>
-          {!isNaN(totalPrice) &&
-          !formState.errors.price?.totalPrice?.message ? (
-            <ThemedText weight="bold" style={{ color: palette.accent }}>
-              {totalPrice + " " + selectedCurrency.sign} ={" "}
-              {Math.round(
-                totalPrice *
-                  getExchangeRate(selectedCurrency, defaultCurrency) *
-                  1e6
-              ) /
-                1e6 +
+        {defaultCurrency && selectedCurrency && (
+          <View>
+            <ThemedText
+              type="sm"
+              style={{
+                textAlign: "right",
+                paddingHorizontal: 10,
+                transform: "translateY(-10px)",
+              }}
+            >
+              {"1 " + selectedCurrency.sign} ={" "}
+              {getExchangeRate(selectedCurrency, defaultCurrency) +
                 " " +
                 defaultCurrency.sign}
             </ThemedText>
-          ) : null}
-          {formState.errors.price?.totalPrice?.message && (
-            <ThemedText type="sm" style={{ color: palette.error }}>
-              {formState.errors.price.totalPrice.message}
-            </ThemedText>
-          )}
-        </View>
+            {!isNaN(totalPrice) &&
+            !formState.errors.price?.totalPrice?.message ? (
+              <ThemedText weight="bold" style={{ color: palette.accent }}>
+                {totalPrice + " " + selectedCurrency.sign} ={" "}
+                {Math.round(
+                  totalPrice *
+                    getExchangeRate(selectedCurrency, defaultCurrency) *
+                    1e6
+                ) /
+                  1e6 +
+                  " " +
+                  defaultCurrency.sign}
+              </ThemedText>
+            ) : null}
+            {formState.errors.price?.totalPrice?.message && (
+              <ThemedText type="sm" style={{ color: palette.error }}>
+                {formState.errors.price.totalPrice.message}
+              </ThemedText>
+            )}
+          </View>
+        )}
         <ThemedText type="subtitle" weight="bold">
           أستلام المبلغ
         </ThemedText>
@@ -509,7 +462,9 @@ export function OverviewBeforeSubmit({
 export default function AddTransactionScreen() {
   const palette = useThemePalette();
   const { profile } = useUserProfile();
-  const { control, formState, handleSubmit, watch } =
+  const router = useRouter();
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const { control, formState, handleSubmit, watch, setValue } =
     useForm<NewTransactionType>({
       resolver: zodResolver(newTransactionSchema),
       defaultValues: {
@@ -529,14 +484,71 @@ export default function AddTransactionScreen() {
         },
         price: {
           totalPrice: undefined,
-          selectedCurrency: CURRENCIES[0],
+          selectedCurrency: undefined,
           isPaidFull: true,
           firstInstallment: undefined,
         },
       },
     });
-  const onSubmit = (data: NewTransactionType) => {
+
+  useEffect(() => {
+    getCurrencies();
+  }, []);
+
+  const getCurrencies = async () => {
+    const { data, error } = await supabase
+      .from("currencies")
+      .select()
+      .order("sign", { ascending: true });
+
+    if (error) {
+      Alert.alert("خطأ", "هناك مشكل في تحميل العملات");
+      console.error(error);
+      return;
+    }
+
+    if (data && data?.length > 0) {
+      const currData = data as Currency[];
+      setCurrencies(currData);
+      setValue(
+        "price.selectedCurrency",
+        currData.filter((c) => c.sign === "USD")[0]
+      ); // set dollar as the default
+    }
+  };
+
+  const onSubmit = async (data: NewTransactionType) => {
+    const selectedCurrency = data.price.selectedCurrency as Currency;
+    if (!selectedCurrency) {
+      Alert.alert("مستحيل", "لايمكن مواصلة العملية لأنه لاتوجد عملة محددة");
+      return;
+    }
+    const { data: trxData, error: trxErr } = await supabase
+      .from("transactions")
+      .insert({
+        currency_id: selectedCurrency.id,
+        original_amount: data.price.totalPrice,
+        amount_usd: data.price.totalPrice * selectedCurrency.to_dollar_rate, // calculated based on chosen currency
+        exchange_rate: selectedCurrency.to_dollar_rate,
+        is_paid_full: data.price.isPaidFull,
+        first_installment: data.price.firstInstallment,
+        created_by: profile?.user_id,
+        sender: data.sender,
+        receiver: data.receiver,
+      })
+      .select();
+
+    if (trxErr) {
+      Alert.alert(
+        "فشل العملية",
+        "لم تكتمل عملية أرسال الأموال لخطئ ما. يرجى المحاولة لاحقا وإذا فشلت فرجاء الأتصال بالمسؤول"
+      );
+      console.error(trxErr);
+      return;
+    }
     Alert.alert("تم أرسال الأموال بنجاح");
+    console.log(trxData);
+    router.navigate("/(auth)/(tabs)/transaction");
   };
 
   return (
@@ -586,6 +598,12 @@ export default function AddTransactionScreen() {
             control={control}
             formState={formState}
             watch={watch}
+            currencies={currencies}
+            defaultCurrency={
+              profile && profile.currency
+                ? currencies.filter((c) => c.id === profile.currency)[0]
+                : undefined
+            }
           />
           ,
           <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>

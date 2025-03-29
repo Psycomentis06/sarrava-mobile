@@ -25,13 +25,7 @@ export const newTransactionPriceSchema = z.object({
     .number({ message: "رقم السعر غير صالح" })
     .nonnegative({ message: "السعر يجب أن يكون رقمًا موجبًا." })
     .min(1, { message: "المبلغ يجب أن يكون 1" }),
-  selectedCurrency: z.object({
-    sign: z.string(),
-    name: z.string(),
-    country: z.string(),
-    flag: z.string(),
-    toDollarRate: z.number(),
-  }),
+  selectedCurrency: z.any(),
   isPaidFull: z.boolean(),
   firstInstallment: z.number().optional(),
 });
