@@ -7,6 +7,8 @@ import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
 import { newAgentSchema, NewAgentType } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { decode } from "base64-arraybuffer";
+import * as Filesystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack } from "expo-router";
 import React, { useState } from "react";
@@ -23,13 +25,12 @@ export default function AddAgentScreen() {
       allowsEditing: true,
       quality: 1,
       allowsMultipleSelection: false,
-      base64: true
+      base64: false, // We lazy-load the base64 using Filesystem to save memory
     });
 
     if (!result.canceled) {
       setSelectedImage(result.assets[0]);
     }
-    
   };
   const { formState, control, handleSubmit, getValues } = useForm<NewAgentType>(
     {
@@ -46,7 +47,22 @@ export default function AddAgentScreen() {
   );
   const onSubmit = async (data: NewAgentType) => {
     try {
-      // 1. Signup user in supabase
+      // 1. Check if mail exists
+      /*
+      const { data: checkMailData, error: checkMailErr } = await supabase
+        .from("user_profiles")
+        .select()
+        .eq("email", getValues().email);
+      if (!checkMailErr) {
+        Alert.alert("خطأ", "فشل التحقق من البريد الألكتروني");
+        console.error(checkMailErr)
+        return;
+      }
+      console.log(checkMailData);
+      if (true) {
+        return;
+      }*/
+      // 2. Signup user in supabase
       const { data: signUpData, error: signUpErr } = await supabase.auth.signUp(
         { email: getValues().email, password: getValues().password }
       );
@@ -55,7 +71,7 @@ export default function AddAgentScreen() {
         console.error(signUpErr);
         return;
       }
-      // 2. Save image in supabase with newly created user id as the image name
+      // 3. Save image in supabase with newly created user id as the image name
       if (!signUpData.user) {
         Alert.alert(
           "مشكل",
@@ -64,11 +80,15 @@ export default function AddAgentScreen() {
         return;
       }
       let imageUrl = null;
-      if (selectedImage && selectedImage.base64) {
+      if (selectedImage) {
+        const imgBase64 = await Filesystem.readAsStringAsync(
+          selectedImage.uri,
+          { encoding: "base64" }
+        );
         const { data: uploadImgData, error: uploadImgErr } =
           await supabase.storage
             .from("user-profiles")
-            .upload(signUpData.user.id, selectedImage.base64, {
+            .upload(signUpData.user.id, decode(imgBase64), {
               upsert: true,
               contentType: selectedImage.mimeType,
             });
@@ -80,17 +100,21 @@ export default function AddAgentScreen() {
         imageUrl = uploadImgData?.fullPath;
       }
 
-      // 3. Save user profile data
+      // 4. Save user profile data
       const { data: insertProfileData, error: insertProfileErr } =
-        await supabase.from("user_profiles").insert({
-          user_id: signUpData.user?.id,
-          firstname: data.firstname,
-          lastname: data.lastname,
-          email: data.email,
-          phone: data.phone,
-          address: data.address,
-          profile_picture: imageUrl,
-        });
+        await supabase
+          .from("user_profiles")
+          .insert({
+            user_id: signUpData.user?.id,
+            firstname: data.firstname,
+            lastname: data.lastname,
+            email: data.email,
+            phone: data.phone,
+            address: data.address,
+            profile_picture: imageUrl,
+          })
+          .select()
+          .single();
 
       if (insertProfileErr) {
         Alert.alert("فشل", "حدث خطأ أثناء تسجيل المعطيات التابعة للوكيل");
