@@ -118,7 +118,7 @@ export default function TransactionScreen() {
             borderColor: palette.tint,
           }}
         >
-          <ThemedTextInput placeholder="بحث" style={{ width: "75%" }} />
+          <ThemedTextInput placeholder="بحث" containerStyle={{ width: "75%" }} />
           <ThemedButton
             style={{ width: 45, borderRadius: "50%" }}
             onPress={() => router.navigate("/(auth)/transaction/add")}
