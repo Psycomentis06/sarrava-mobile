@@ -1,10 +1,10 @@
 import { HapticTab } from "@/components/HapticTab";
-import { Colors } from "@/constants/Colors";
-import { Stack, Tabs } from "expo-router";
-import TabBarBackground from "@/components/ui/TabBarBackground";
-import { Platform } from "react-native";
-import React from "react";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import TabBarBackground from "@/components/ui/TabBarBackground";
+import { Colors } from "@/constants/Colors";
+import { Tabs } from "expo-router";
+import React from "react";
+import { Platform } from "react-native";
 
 export default function TabLayout() {
   return (
@@ -78,6 +78,13 @@ export default function TabLayout() {
         options={{
           title: "Home old screen",
           href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="currency_rates"
+        options={{
+          href: null, // maybe in agent screen we show it
         }}
       />
     </Tabs>

@@ -1,18 +1,18 @@
+import ArrowsExchange from "@/components/svg/ArrowsExchange";
+import BitcoinExchange from "@/components/svg/BitcoinExchange";
+import Exchange from "@/components/svg/Exchange";
+import ListSvg from "@/components/svg/List";
+import Money from "@/components/svg/Money";
+import Money2 from "@/components/svg/Money2";
+import ReciptTax from "@/components/svg/ReciptTax";
+import ReportBox from "@/components/svg/ReportBox";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { hexToRgba } from "@/utils/colors";
-import { Pressable, Animated, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Link, useNavigation } from "expo-router";
 import { useRef } from "react";
-import ArrowsExchange from "@/components/svg/ArrowsExchange";
-import Money from "@/components/svg/Money";
-import ReciptTax from "@/components/svg/ReciptTax";
-import Money2 from "@/components/svg/Money2";
-import ListSvg from "@/components/svg/List";
-import Exchange from "@/components/svg/Exchange";
-import ReportBox from "@/components/svg/ReportBox";
-import BitcoinExchange from "@/components/svg/BitcoinExchange";
-import { useNavigation } from "expo-router";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -191,25 +191,27 @@ export default function HomeScreen() {
                 </Text>
               </Pressable>
 
-              <Pressable
-                style={styles.quickActionButton}
-                android_ripple={{
-                  color: "rgba(0, 0, 0, 0.26)",
-                  foreground: true,
-                }}
-                android_disableSound
-              >
-                <ListSvg />
-                <Text
-                  style={{
-                    textAlign: "center",
-                    fontSize: 18,
-                    fontFamily: "Tajawal",
+              <Link href="/(auth)/(tabs)/transaction" asChild>
+                <Pressable
+                  style={styles.quickActionButton}
+                  android_ripple={{
+                    color: "rgba(0, 0, 0, 0.26)",
+                    foreground: true,
                   }}
+                  android_disableSound
                 >
-                  سجل المعاملات
-                </Text>
-              </Pressable>
+                  <ListSvg />
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      fontSize: 18,
+                      fontFamily: "Tajawal",
+                    }}
+                  >
+                    سجل المعاملات
+                  </Text>
+                </Pressable>
+              </Link>
             </View>
 
             <View
@@ -239,25 +241,27 @@ export default function HomeScreen() {
                 </Text>
               </Pressable>
 
-              <Pressable
-                android_ripple={{
-                  color: "rgba(0, 0, 0, 0.26)",
-                  foreground: true,
-                }}
-                android_disableSound
-                style={styles.quickActionButton}
-              >
-                <BitcoinExchange />
-                <Text
-                  style={{
-                    textAlign: "center",
-                    fontSize: 18,
-                    fontFamily: "Tajawal",
+              <Link href="/(auth)/(tabs)/currency_rates" asChild>
+                <Pressable
+                  android_ripple={{
+                    color: "rgba(0, 0, 0, 0.26)",
+                    foreground: true,
                   }}
+                  android_disableSound
+                  style={styles.quickActionButton}
                 >
-                  أسعار الصرف
-                </Text>
-              </Pressable>
+                  <BitcoinExchange />
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      fontSize: 18,
+                      fontFamily: "Tajawal",
+                    }}
+                  >
+                    أسعار الصرف
+                  </Text>
+                </Pressable>
+              </Link>
             </View>
           </View>
         </ThemedView>

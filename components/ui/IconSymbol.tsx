@@ -32,6 +32,7 @@ const MAPPING = {
   "square.and.arrow.down": "file-download",
   "arrow.up.arrow.down": "swap-vert",
   "photo.fill": "add-photo-alternate",
+  "coloncurrencysign.square.fill" : "currency-exchange"
 } as Partial<
   Record<
     import("expo-symbols").SymbolViewProps["name"],

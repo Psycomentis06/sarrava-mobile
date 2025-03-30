@@ -3,7 +3,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
-import { useNavigation } from "expo-router";
+import { Link, useNavigation } from "expo-router";
 import React from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,12 +31,12 @@ export default function MoreOptions() {
 
   const signOut = async () => {
     console.log("signout");
-    
+
     const { error } = await supabase.auth.signOut({ scope: "local" });
     if (error) {
       Alert.alert("مشكل حدث أثناء تسجيل الخروج", error.message);
     }
-    navigation.navigate("auth/login" as never)
+    navigation.navigate("auth/login" as never);
   };
 
   return (
@@ -49,20 +49,20 @@ export default function MoreOptions() {
       }}
     >
       <View>
-        <Pressable
-          style={styles.menuItem}
-          onPress={() => navigation.navigate("agent" as never)}
-          android_ripple={{ color: "rgba(0,0,0,0.26)" }}
-          disabled
-        >
-          <IconSymbol
-            size={24}
-            name="gear"
-            color={text}
-            style={{ marginHorizontal: 5 }}
-          />
-          <ThemedText style={{ marginLeft: 5 }}>الوكلاء</ThemedText>
-        </Pressable>
+        <Link href="/(auth)/(tabs)/currency_rates" asChild>
+          <Pressable
+            style={styles.menuItem}
+            android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+          >
+            <IconSymbol
+              size={24}
+              name="coloncurrencysign.square.fill"
+              color={text}
+              style={{ marginHorizontal: 5 }}
+            />
+            <ThemedText style={{ marginLeft: 5 }}>أسعار الصرف</ThemedText>
+          </Pressable>
+        </Link>
         <Pressable
           style={styles.menuItem}
           onPress={() => navigation.navigate("settings" as never)}
