@@ -353,13 +353,12 @@ function TransactionFormComponent({
             name="price.firstInstallment"
             render={({ field: { value, onChange, onBlur } }) => (
               <ThemedTextInput
-                style={{ width: "60%" }}
+                containerStyle={{ width: "50%" }}
                 keyboardType="numeric"
                 value={value?.toString()}
                 onChangeText={onChange}
                 onBlur={onBlur}
                 error={formState.errors.price?.firstInstallment?.message}
-                errorStyle={{width: '60%'}}
               />
             )}
           />
@@ -624,7 +623,7 @@ export default function AddTransactionScreen() {
           />
           ,
           <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>
-            <ThemedButton onPress={handleSubmit(onSubmit)}>
+            <ThemedButton onPress={handleSubmit(onSubmit)} disabled={!profile?.currency}>
               <ThemedText
                 style={{ textAlign: "center", color: palette.background }}
               >

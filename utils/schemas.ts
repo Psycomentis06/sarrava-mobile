@@ -28,10 +28,15 @@ export const newTransactionPriceSchema = z
       .min(1, { message: "المبلغ يجب أن يكون 1" }),
     selectedCurrency: z.any(),
     isPaidFull: z.boolean(),
-    firstInstallment: z.number().optional(),
+    firstInstallment: z.coerce
+      .number({ message: "رقم السعر غير صالح" })
+      .nonnegative({ message: "السعر يجب أن يكون رقمًا موجبًا." })
+      .optional(),
   })
   .refine(
     (data) => {
+      console.log(data);
+      
       if (!data.isPaidFull && !data.firstInstallment) {
         return false;
       }
@@ -44,6 +49,8 @@ export const newTransactionPriceSchema = z
   )
   .refine(
     (data) => {
+
+      console.log(data);
       if (
         !data.isPaidFull &&
         data.firstInstallment &&
