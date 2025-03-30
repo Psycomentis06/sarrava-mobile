@@ -6,7 +6,7 @@ import { useUserProfile } from "@/contexts/profile";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
 import { hexToRgba } from "@/utils/colors";
-import { Currency } from "@/utils/models";
+import { Currency, Transaction } from "@/utils/models";
 import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Picker } from "@react-native-picker/picker";
@@ -552,7 +552,8 @@ export default function AddTransactionScreen() {
         sender: data.sender,
         receiver: data.receiver,
       })
-      .select();
+      .select('id')
+      .single();
 
     if (trxErr) {
       Alert.alert(
@@ -563,8 +564,11 @@ export default function AddTransactionScreen() {
       return;
     }
     Alert.alert("تم أرسال الأموال بنجاح");
-    console.log(trxData);
-    router.navigate("/(auth)/(tabs)/transaction");
+    const transactionData = trxData as Transaction
+    router.replace({
+      pathname: "/(auth)/(tabs)/transaction",
+      params: { id: transactionData.id }, // Sending the ID to reload the data from the database
+    });
   };
 
   return (
@@ -623,7 +627,10 @@ export default function AddTransactionScreen() {
           />
           ,
           <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>
-            <ThemedButton onPress={handleSubmit(onSubmit)} disabled={!profile?.currency}>
+            <ThemedButton
+              onPress={handleSubmit(onSubmit)}
+              disabled={!profile?.currency}
+            >
               <ThemedText
                 style={{ textAlign: "center", color: palette.background }}
               >

@@ -7,7 +7,7 @@ import { UseSupabaseSession } from "@/hooks/useSupabaseSession";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
 import { Transaction, TransactionStatus } from "@/utils/models";
-import { useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function TransactionScreen() {
   const insets = useSafeAreaInsets();
   const palette = useThemePalette();
-  const navigation = useNavigation();
+  const { id: newTransactionId } = useLocalSearchParams(); // send from add transaction screen
   const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isSessionLoading, session] = UseSupabaseSession();
@@ -96,7 +96,7 @@ export default function TransactionScreen() {
     if (session !== null) {
       getTransactions();
     }
-  }, [session]);
+  }, [session, newTransactionId]);
 
   return (
     <ThemedView
@@ -118,7 +118,10 @@ export default function TransactionScreen() {
             borderColor: palette.tint,
           }}
         >
-          <ThemedTextInput placeholder="بحث" containerStyle={{ width: "75%" }} />
+          <ThemedTextInput
+            placeholder="بحث"
+            containerStyle={{ width: "75%" }}
+          />
           <ThemedButton
             style={{ width: 45, borderRadius: "50%" }}
             onPress={() => router.navigate("/(auth)/transaction/add")}
@@ -155,7 +158,13 @@ export default function TransactionScreen() {
                     borderless: false,
                   }}
                   onPress={() => {
-                    router.push({pathname: '/transaction/[id]', params: {id: i.item.id, transaction: JSON.stringify(i.item)}})
+                    router.push({
+                      pathname: "/transaction/[id]",
+                      params: {
+                        id: i.item.id,
+                        transaction: JSON.stringify(i.item),
+                      },
+                    });
                     // navigation.navigate("transaction/[id]", { id: i.item.id });
                   }}
                 >
@@ -163,13 +172,15 @@ export default function TransactionScreen() {
                     style={{
                       justifyContent: "space-between",
                       flexDirection: "row",
-                      alignItems: 'center'
+                      alignItems: "center",
                     }}
                   >
                     <ThemedText type="xs" style={{ opacity: 0.7 }}>
                       {"#" + i.item.id}
                     </ThemedText>
-                    <ThemedText type="sm">{new Date(i.item.created_at).toLocaleString()}</ThemedText>
+                    <ThemedText type="sm">
+                      {new Date(i.item.created_at).toLocaleString()}
+                    </ThemedText>
                   </View>
                   <View style={{ flexDirection: "row", gap: 5 }}>
                     <ThemedText type="l" weight="medium">
