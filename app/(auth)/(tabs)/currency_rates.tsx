@@ -276,7 +276,7 @@ export default function CurrencyRatesScreen() {
               fieldState: { error },
             }) => (
               <ThemedTextInput
-                style={styles.input}
+                containerStyle={styles.input}
                 placeholder="أدخل السعر الجديد (1 دولار أمريكي = عملة X)"
                 keyboardType="numeric"
                 value={value ? value.toString() : ""}
