@@ -28,6 +28,7 @@ export type UserProfile = {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
+  created_by?: string | UserProfile;
   created_at: string;
   profile_picture?: string | null;
   currency?: number | null;

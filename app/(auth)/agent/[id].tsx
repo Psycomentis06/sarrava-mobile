@@ -1,7 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import Separator from "@/components/ui/Separator";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import { UserProfile } from "@/utils/models";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { Image, TextStyle, View } from "react-native";
@@ -51,7 +51,8 @@ function TitleValueItem({
 }
 
 export default function AgentDetailsScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, agent } = useLocalSearchParams();
+  const agentDetails = JSON.parse(agent as string) as UserProfile;
   const palette = useThemePalette();
   return (
     <>
@@ -66,19 +67,36 @@ export default function AgentDetailsScreen() {
       />
       <View>
         <View style={{ backgroundColor: palette.accent, height: 50 }}></View>
-        <Image
-          source={{
-            uri: "https://unsplash.com/photos/n4KewLKFOZw/download?ixid=M3wxMjA3fDB8MXxhbGx8fHx8fHx8fHwxNzQxNDY2ODA1fA&force=true&w=640",
-            width: 100,
-            height: 100,
-          }}
-          style={{
-            alignSelf: "center",
-            borderRadius: 50,
-            transform: "translateY(-30px)",
-            zIndex: 10,
-          }}
-        />
+        {agentDetails.profile_picture ? (
+          <Image
+            defaultSource={require("@/assets/images/anonymous-avatar.jpg")}
+            source={{
+              uri: agentDetails.profile_picture,
+              width: 100,
+              height: 100,
+            }}
+            style={{
+              alignSelf: "center",
+              borderRadius: 50,
+              transform: "translateY(-30px)",
+              zIndex: 10,
+              width: 100,
+              height: 100,
+            }}
+          />
+        ) : (
+          <Image
+            source={require("@/assets/images/anonymous-avatar.jpg")}
+            style={{
+              alignSelf: "center",
+              borderRadius: 50,
+              transform: "translateY(-30px)",
+              zIndex: 10,
+              width: 100,
+              height: 100,
+            }}
+          />
+        )}
         <View
           style={{
             padding: 20,
@@ -89,23 +107,36 @@ export default function AgentDetailsScreen() {
             transform: "translateY(-50px)",
           }}
         >
-          <TitleValueItem title="الأسم :" value="ياسر" />
-          <TitleValueItem title="اللّقب :" value="منير" />
+          <TitleValueItem
+            title="الأسم :"
+            value={agentDetails?.firstname ?? ""}
+          />
+          <TitleValueItem
+            title="اللّقب :"
+            value={agentDetails?.lastname ?? ""}
+          />
           <TitleValueItem
             title="البريد الألكتروني :"
-            value="yasser.mounir@example.com"
+            value={agentDetails?.email ?? ""}
           />
-          <TitleValueItem title="الهاتف :" value="+21698765432" type="phone" />
-          <TitleValueItem title="العنوان :" value="بناية الأمانة" />
+          <TitleValueItem
+            title="الهاتف :"
+            value={agentDetails?.phone ?? ""}
+            type="phone"
+          />
+          <TitleValueItem
+            title="العنوان :"
+            value={agentDetails?.address ?? ""}
+          />
           <Separator />
           <TitleValueItem
             title="تسجيل الدّخول :"
-            value="yasser_m"
+            value={agentDetails?.email ?? ""}
             valueStyle={{ color: palette.error }}
           />
           <TitleValueItem
             title="كلمة المرور"
-            value="A***8**i"
+            value="********"
             valueStyle={{ color: palette.error }}
           />
         </View>

@@ -5,18 +5,20 @@ import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
+import { UserProfile } from "@/utils/models";
 import { newAgentSchema, NewAgentType } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { decode } from "base64-arraybuffer";
 import * as Filesystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, Image, Pressable, ScrollView, View } from "react-native";
 
 export default function AddAgentScreen() {
   const palette = useThemePalette();
+  const router = useRouter();
   const [selectedImage, setSelectedImage] =
     useState<ImagePicker.ImagePickerAsset | null>(null);
   const pickImage = async () => {
@@ -113,7 +115,7 @@ export default function AddAgentScreen() {
             address: data.address,
             profile_picture: imageUrl,
           })
-          .select()
+          .select("id")
           .single();
 
       if (insertProfileErr) {
@@ -123,6 +125,11 @@ export default function AddAgentScreen() {
       }
 
       console.log("New agent profile: ", insertProfileData);
+      const newAgentProfile = insertProfileData as UserProfile;
+      router.replace({
+        pathname: "/(auth)/(tabs)/agent",
+        params: { id: newAgentProfile.id },
+      });
     } catch (error) {
       console.error("Error in onSubmit:", error);
       Alert.alert(
