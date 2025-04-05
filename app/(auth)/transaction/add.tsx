@@ -5,6 +5,10 @@ import { ThemedView } from "@/components/ThemedView";
 import { useUserProfile } from "@/contexts/profile";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
+import {
+  calculateTransactionFees,
+  getExchangeRate,
+} from "@/services/transactions";
 import { hexToRgba } from "@/utils/colors";
 import { Currency, Transaction } from "@/utils/models";
 import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
@@ -12,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, Stack, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Control,
   Controller,
@@ -177,11 +181,98 @@ function TransactionFormComponent({
   const totalPrice = watch("price.totalPrice");
   const isPaidFull = watch("price.isPaidFull");
 
-  const getExchangeRate = (from: Currency, to: Currency): number => {
-    const fromInUSD = 1 / from.to_dollar_rate;
-    const toInUSD = 1 / to.to_dollar_rate;
-    const exchangeRate = toInUSD / fromInUSD;
-    return Math.round(exchangeRate * 1e6) / 1e6;
+  const getConvertedAmount = (
+    amount: number,
+    from: Currency,
+    to: Currency
+  ): number => {
+    if (!amount || isNaN(amount)) return 0;
+    const exchangeRate = getExchangeRate(from, to);
+    return Math.round(amount * exchangeRate * 1e6) / 1e6;
+  };
+
+  // Calculate fees with detailed breakdown in selected currency
+  const getFeeBreakdown = () => {
+    if (!selectedCurrency || !totalPrice || isNaN(totalPrice)) {
+      return null;
+    }
+
+    try {
+      // Convert amount to USD for fee calculation
+      const amountInUSD = totalPrice * selectedCurrency.to_dollar_rate;
+
+      // Calculate fees in USD
+      const {
+        operationCost,
+        governmentTax,
+        totalFee,
+        tier,
+        governmentRate
+      } = calculateTransactionFees(amountInUSD);
+      
+      // Convert back to selected currency
+      const usdToSelectedRate = 1 / selectedCurrency.to_dollar_rate;
+      const operationCostInSelectedCurrency = Math.round(operationCost * usdToSelectedRate * 100) / 100;
+      const governmentTaxInSelectedCurrency = Math.round(governmentTax * usdToSelectedRate * 100) / 100;
+      const totalFeeInSelectedCurrency = Math.round(totalFee * usdToSelectedRate * 100) / 100;
+
+      return {
+        operationCost: operationCostInSelectedCurrency,
+        governmentTax: governmentTaxInSelectedCurrency,
+        totalFee: totalFeeInSelectedCurrency,
+        tier,
+        governmentRate,
+        formattedTierInfo: tier.feeType === 'fixed' 
+          ? `${Math.round(tier.fee * usdToSelectedRate * 100) / 100} ${selectedCurrency.sign}` 
+          : `${(tier.fee * 100).toFixed(1)}%`
+      };
+    } catch (error) {
+      console.error("Fee calculation error:", error);
+      return null;
+    }
+  };
+
+  // Calculate fees breakdown
+  const feeBreakdown = useMemo(() => getFeeBreakdown(), [selectedCurrency, totalPrice]) 
+
+ const renderFeeBreakdown = () => {
+  if (!feeBreakdown || !selectedCurrency) return null;
+
+  return (
+    <View
+      style={{
+        backgroundColor: hexToRgba(palette.accent, 0.1),
+        borderRadius: 8,
+        padding: 10,
+        marginTop: 5,
+      }}
+    >
+      <ThemedText type="md" weight="bold" style={{ color: palette.accent, marginBottom: 5 }}>
+        تفاصيل الرسوم :
+      </ThemedText>
+
+      <View style={{ marginLeft: 10 }}>
+        <ThemedText type="sm">
+          {`• رسوم المعاملة${feeBreakdown.tier ? ` (${feeBreakdown.formattedTierInfo})` : ''} : ${selectedCurrency.sign} ${feeBreakdown.operationCost}`}
+        </ThemedText>
+
+        <ThemedText type="sm">
+          {`• الضريبة الحكومية (${(feeBreakdown.governmentRate * 100).toFixed(1)}%) : ${selectedCurrency.sign} ${feeBreakdown.governmentTax}`}
+        </ThemedText>
+
+        <ThemedText type="md" weight="bold" style={{ marginTop: 5, color: palette.accent }}>
+          {`سعر المعاملة : ${selectedCurrency.sign} ${feeBreakdown.totalFee}`}
+        </ThemedText>
+      </View>
+    </View>
+  );
+};
+ 
+
+  const getBorderColor = () => {
+    if (formState.errors.price?.totalPrice) return palette.error;
+    if (priceInputFocused) return palette.accent;
+    return hexToRgba(palette.text, 0.3);
   };
   return (
     <View style={[styles.sectionContainer, { backgroundColor: palette.tint }]}>
@@ -204,16 +295,13 @@ function TransactionFormComponent({
         </ThemedText>
       </LinearGradient>
       <View style={{ paddingTop: 10, gap: 15 }}>
+        {/* Price input and currency selector */}
         <View
           style={{
             flexDirection: "row",
             borderWidth: 1,
             borderRadius: 10,
-            borderColor: formState.errors.price?.totalPrice
-              ? palette.error
-              : priceInputFocused
-              ? palette.accent
-              : hexToRgba(palette.text, 0.3),
+            borderColor: getBorderColor(),
           }}
         >
           <Controller
@@ -269,6 +357,7 @@ function TransactionFormComponent({
             />
           </View>
         </View>
+        {/* Exchange rate and converted amount display */}
         {defaultCurrency && selectedCurrency && (
           <View>
             <ThemedText
@@ -284,20 +373,21 @@ function TransactionFormComponent({
                 " " +
                 defaultCurrency.sign}
             </ThemedText>
+
             {!isNaN(totalPrice) &&
-            !formState.errors.price?.totalPrice?.message ? (
-              <ThemedText weight="bold" style={{ color: palette.accent }}>
-                {totalPrice + " " + selectedCurrency.sign} ={" "}
-                {Math.round(
-                  totalPrice *
-                    getExchangeRate(selectedCurrency, defaultCurrency) *
-                    1e6
-                ) /
-                  1e6 +
-                  " " +
-                  defaultCurrency.sign}
-              </ThemedText>
-            ) : null}
+              !formState.errors.price?.totalPrice?.message && (
+                <ThemedText weight="bold" style={{ color: palette.accent }}>
+                  {totalPrice + " " + selectedCurrency.sign} ={" "}
+                  {getConvertedAmount(
+                    totalPrice,
+                    selectedCurrency,
+                    defaultCurrency
+                  ) +
+                    " " +
+                    defaultCurrency.sign}
+                </ThemedText>
+              )}
+
             {formState.errors.price?.totalPrice?.message && (
               <ThemedText type="sm" style={{ color: palette.error }}>
                 {formState.errors.price.totalPrice.message}
@@ -305,6 +395,11 @@ function TransactionFormComponent({
             )}
           </View>
         )}
+
+        {/* Transaction fee display */}
+        {selectedCurrency && defaultCurrency && (renderFeeBreakdown())}
+
+        {/* Payment options section */}
         <ThemedText type="subtitle" weight="bold">
           أستلام المبلغ
         </ThemedText>
@@ -552,7 +647,7 @@ export default function AddTransactionScreen() {
         sender: data.sender,
         receiver: data.receiver,
       })
-      .select('id')
+      .select("id")
       .single();
 
     if (trxErr) {
@@ -564,7 +659,7 @@ export default function AddTransactionScreen() {
       return;
     }
     Alert.alert("تم أرسال الأموال بنجاح");
-    const transactionData = trxData as Transaction
+    const transactionData = trxData as Transaction;
     router.replace({
       pathname: "/(auth)/(tabs)/transaction",
       params: { id: transactionData.id }, // Sending the ID to reload the data from the database
@@ -625,7 +720,6 @@ export default function AddTransactionScreen() {
                 : undefined
             }
           />
-          ,
           <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>
             <ThemedButton
               onPress={handleSubmit(onSubmit)}
