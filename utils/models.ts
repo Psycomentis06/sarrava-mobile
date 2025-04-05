@@ -39,6 +39,10 @@ export type Transaction = {
   currency: Currency;
   amount_usd: number; // numeric
   original_amount: number; // numeric
+  operation_cost_usd: number; // numeric
+  operation_cost_original: number; // numeric
+  operation_tax_usd: number; // numeric
+  operation_tax_original: number; // numeric
   exchange_rate: number; // numeric
   is_paid_full?: boolean | null; // boolean, optional
   first_installment?: number | null; // numeric, optional
