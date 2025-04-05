@@ -10,8 +10,8 @@ export type Currency = {
   country_code: string;
   flag: string;
   flag_url: string;
-  created_at: string | null;
-  updated_at: string | null;
+  created_at: string | number | null;
+  updated_at: string | number | null;
   updated_by: string | null;
 };
 
@@ -63,8 +63,8 @@ export type Transaction = {
 };
 
 export enum TransactionStatus {
-  PENDING,
-  CANCELED,
-  CONFIRMED,
-  FAILED,
+  PENDING = "PENDING",
+  CANCELED = "CANCELED",
+  CONFIRMED = "CONFIRMED",
+  FAILED = "FAILED",
 }

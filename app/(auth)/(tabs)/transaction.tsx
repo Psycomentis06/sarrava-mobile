@@ -1,3 +1,4 @@
+import ItemsNotFound from "@/components/svg/ItemsNotFound";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
@@ -7,18 +8,47 @@ import { UseSupabaseSession } from "@/hooks/useSupabaseSession";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
 import { Transaction, TransactionStatus } from "@/utils/models";
+import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+enum TransactionSearchType {
+  ALL, // Search for transactions by sender or receiver
+  SENDER, // sender only
+  RECEIVER, // receiver only
+}
 
 export default function TransactionScreen() {
   const insets = useSafeAreaInsets();
   const palette = useThemePalette();
-  const { id: newTransactionId } = useLocalSearchParams(); // send from add transaction screen
+  const { id: newTransactionId } = useLocalSearchParams(); // sent from add transaction screen
   const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isSessionLoading, session] = UseSupabaseSession();
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(false)
+  const [
+    isUpdateTransactionStatusModalVisible,
+    setIsUpdateTransactionStatusModalVisible,
+  ] = useState<boolean>(false);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
+  const [isSearchInputFocused, setIsSearchInputFocused] =
+    useState<boolean>(false);
+  const [searchType, setSearchType] = useState<TransactionSearchType>(
+    TransactionSearchType.ALL
+  );
+  const [searchInput, setSearchInput] = useState<string>("");
 
   const getItemColorByStatus = (status: TransactionStatus) => {
     switch (status) {
@@ -38,7 +68,7 @@ export default function TransactionScreen() {
   const getTransactionArabicStatus = (status: TransactionStatus): string => {
     switch (status) {
       case TransactionStatus.FAILED:
-        return "فشلة";
+        return "فشلت";
       case TransactionStatus.CANCELED:
         return "ألغيت";
       case TransactionStatus.CONFIRMED:
@@ -52,10 +82,9 @@ export default function TransactionScreen() {
 
   const getTransactions = async () => {
     try {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select(
-          `
+      setIsDataLoading(true)
+      const query = supabase.from("transactions").select(
+        `
            *,
           currency:currency_id (
             id,
@@ -72,9 +101,38 @@ export default function TransactionScreen() {
             flag_url
           )
           `
-        )
+      );
+
+      const searchValue = searchInput.trim();
+      if (searchValue) {
+        const queryBySender =
+          `sender->>firstname.ilike.%${searchValue}%,` +
+          `sender->>lastname.ilike.%${searchValue}%,` +
+          `sender->>email.ilike.%${searchValue}%,` +
+          `sender->>address.ilike.%${searchValue}%,` +
+          `sender->>phone.ilike.%${searchValue}%`;
+        const queryByReceiver =
+          `receiver->>firstname.ilike.%${searchValue}%,` +
+          `receiver->>lastname.ilike.%${searchValue}%,` +
+          `receiver->>email.ilike.%${searchValue}%,` +
+          `receiver->>address.ilike.%${searchValue}%,` +
+          `receiver->>phone.ilike.%${searchValue}%`;
+
+        if (searchType === TransactionSearchType.SENDER) {
+          query.or(queryBySender);
+        } else if (searchType === TransactionSearchType.RECEIVER) {
+          query.or(queryByReceiver);
+        } else {
+          query.or(queryBySender + "," + queryByReceiver);
+        }
+      }
+
+      query
         .eq("created_by", session?.user.id)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false });
+      // TODO add infinite scroll
+
+      const { data, error } = await query;
 
       if (error) {
         Alert.alert("خطأ", "حدث خطأ ما أثناء تحميل المعلومات");
@@ -82,13 +140,15 @@ export default function TransactionScreen() {
         return;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         setTransactions(data);
       }
     } catch (error) {
       console.error(error);
       Alert.alert("خطأ", "حدث خطأ ما أثناء تحميل المعلومات");
       return;
+    } finally {
+      setIsDataLoading(false)
     }
   };
 
@@ -98,15 +158,138 @@ export default function TransactionScreen() {
     }
   }, [session, newTransactionId]);
 
+  const handleUpdateTransactionState = async (status: TransactionStatus) => {
+    if (selectedTransaction == null) {
+      Alert.alert("خطأ", "لاتوجد معاملة محدّدة للتحديث");
+      setIsUpdateTransactionStatusModalVisible(false);
+      return;
+    }
+    // update status
+    await Alert.alert(
+      "تحديث حالة المعاملة",
+      "أنت بصدد تحديث حالة العملة إلى " +
+        getTransactionArabicStatus(status) +
+        ". هل أنت متأكّد؟ (لايمكنك تغيير الحالة في المستقبل)",
+      [
+        {
+          text: "تأكيد",
+          onPress: () => {
+            setIsUpdateTransactionStatusModalVisible(false);
+            updateTransactionStatus(selectedTransaction, status);
+            setSelectedTransaction(null);
+          },
+        },
+      ]
+    );
+
+    if (Platform.OS === "web") {
+      setIsUpdateTransactionStatusModalVisible(false);
+      updateTransactionStatus(selectedTransaction, status);
+      setSelectedTransaction(null);
+    }
+  };
+
+  const updateTransactionStatus = async (
+    transaction: Transaction,
+    status: TransactionStatus
+  ) => {
+    const { error } = await supabase
+      .from("transactions")
+      .update({
+        status,
+      })
+      .eq("id", transaction.id);
+
+    if (error != null) {
+      Alert.alert("خطأ", "حدث خطأ أثناء تحديث المعاملة");
+      console.error(error);
+      return;
+    }
+    Alert.alert(
+      "نجاح العملية",
+      "تم تحديث حالة المعاملة إلى " +
+        getTransactionArabicStatus(status) +
+        " بنجاح"
+    );
+
+    // update local state
+    setTransactions((prev) =>
+      prev.map((t) =>
+        t.id === transaction.id
+          ? {
+              ...t,
+              status: status,
+            }
+          : t
+      )
+    );
+  };
+
+  // modal to update transaction status
+  const renderUpdateStatusModal = () => (
+    <Modal
+      transparent={true}
+      animationType="fade"
+      visible={isUpdateTransactionStatusModalVisible}
+      onRequestClose={() => setIsUpdateTransactionStatusModalVisible(false)}
+    >
+      <View style={styles.centeredView}>
+        <View style={styles.modalView}>
+          <ThemedText type="l" weight="medium" style={styles.modalTitle}>
+            تحديث حالة المعاملة
+          </ThemedText>
+
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() =>
+              handleUpdateTransactionState(TransactionStatus.CONFIRMED)
+            }
+          >
+            <ThemedText>أكتملت</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() =>
+              handleUpdateTransactionState(TransactionStatus.FAILED)
+            }
+          >
+            <ThemedText>فشلت</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() =>
+              handleUpdateTransactionState(TransactionStatus.CANCELED)
+            }
+          >
+            <ThemedText>ألغيت</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.modalOption, styles.cancelOption]}
+            onPress={() => setIsUpdateTransactionStatusModalVisible(false)}
+          >
+            <ThemedText style={styles.cancelText}>
+              الرّجوع إلى الوراء
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <ThemedView
       style={{
+        flex: 1,
         paddingTop: insets.top,
         paddingBottom: insets.bottom,
         paddingLeft: insets.left,
         paddingRight: insets.right,
       }}
     >
+      {renderUpdateStatusModal()}
       <View style={{ padding: 10, height: "100%" }}>
         <View
           style={{
@@ -118,12 +301,47 @@ export default function TransactionScreen() {
             borderColor: palette.tint,
           }}
         >
-          <ThemedTextInput
-            placeholder="بحث"
-            containerStyle={{ width: "75%" }}
-          />
+          <View style={{ flexDirection: "row" }}>
+            <View
+              style={{
+                width: 115,
+                display: isSearchInputFocused ? "none" : "flex",
+              }}
+            >
+              <Picker
+                style={{ fontSize: 8 }}
+                mode="dropdown"
+                selectedValue={searchType}
+                onValueChange={setSearchType}
+              >
+                <Picker.Item label="الكلّ" value={TransactionSearchType.ALL} />
+                <Picker.Item
+                  label="المرسل"
+                  value={TransactionSearchType.SENDER}
+                />
+                <Picker.Item
+                  label="المستفيد"
+                  value={TransactionSearchType.RECEIVER}
+                />
+              </Picker>
+            </View>
+            <ThemedTextInput
+              placeholder="بحث"
+              containerStyle={{ width: isSearchInputFocused ? "90%" : 150 }}
+              value={searchInput}
+              onChangeText={setSearchInput}
+              onFocus={() => setIsSearchInputFocused(true)}
+              onBlur={() => setIsSearchInputFocused(false)}
+              returnKeyType="search"
+              onEndEditing={getTransactions}
+            />
+          </View>
           <ThemedButton
-            style={{ width: 45, borderRadius: "50%" }}
+            style={{
+              width: 45,
+              borderRadius: "50%",
+              display: isSearchInputFocused ? "none" : "flex",
+            }}
             onPress={() => router.navigate("/(auth)/transaction/add")}
           >
             <ThemedText>
@@ -142,8 +360,26 @@ export default function TransactionScreen() {
             flexGrow: 1,
             paddingBottom: 20,
           }}
+          style={{ paddingHorizontal: 10 }}
           data={transactions}
           keyExtractor={(i) => i.id}
+          ListEmptyComponent={
+            <View>
+              <ItemsNotFound width="100%" height="100%" />
+              <ThemedText
+                type="md"
+                weight="medium"
+                style={{
+                  position: "absolute",
+                  bottom: 100,
+                  left: 50,
+                  opacity: 0.6,
+                }}
+              >
+                لم نتمكن من العثور على أي معاملة
+              </ThemedText>
+            </View>
+          }
           renderItem={(i) => {
             return (
               <View key={i.item.id}>
@@ -157,6 +393,13 @@ export default function TransactionScreen() {
                     foreground: true,
                     borderless: false,
                   }}
+                  onLongPress={() => {
+                    const status = i.item?.status;
+                    if (status == TransactionStatus.PENDING) {
+                      setIsUpdateTransactionStatusModalVisible(true);
+                      setSelectedTransaction(i.item);
+                    }
+                  }}
                   onPress={() => {
                     router.push({
                       pathname: "/transaction/[id]",
@@ -165,7 +408,6 @@ export default function TransactionScreen() {
                         transaction: JSON.stringify(i.item),
                       },
                     });
-                    // navigation.navigate("transaction/[id]", { id: i.item.id });
                   }}
                 >
                   <View
@@ -254,5 +496,55 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 1.0,
     elevation: 1,
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalView: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: "80%",
+  },
+  modalTitle: {
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  modalOption: {
+    width: "100%",
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    alignItems: "center",
+  },
+  cancelOption: {
+    borderBottomWidth: 0,
+  },
+  cancelText: {
+    color: "red",
+  },
+  input: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    padding: 10,
+    marginVertical: 10,
+  },
+  buttonContainer: {
+    flexDirection: "column",
+    justifyContent: "space-around",
   },
 });
