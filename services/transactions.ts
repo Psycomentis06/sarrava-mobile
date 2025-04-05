@@ -18,23 +18,28 @@ export type TransactionPricingTier = {
  * Transaction cost pricing tiers
  */
 export const PRICING_TIERS: TransactionPricingTier[] = [
-  { maxAmount: 50, fee: 0.5, feeType: TransactionPricingTierFeeType.FIXED }, // $0-50: $0.50 flat fee
-  { maxAmount: 200, fee: 1, feeType: TransactionPricingTierFeeType.FIXED }, // $51-200: $1 flat fee
+  { maxAmount: 50, fee: 1, feeType: TransactionPricingTierFeeType.FIXED }, // $0–50: $1 flat fee
+  { maxAmount: 200, fee: 2, feeType: TransactionPricingTierFeeType.FIXED }, // $51–200: $2 flat fee
   {
     maxAmount: 1000,
-    fee: 0.005,
+    fee: 0.01,
     feeType: TransactionPricingTierFeeType.PERCENT,
-  }, // $201-1000: 0.5% fee
+  }, // $201–1000: 1% fee
   {
     maxAmount: 5000,
-    fee: 0.004,
+    fee: 0.0075,
     feeType: TransactionPricingTierFeeType.PERCENT,
-  }, // $1001-5000: 0.4% fee
+  }, // $1001–5000: 0.75% fee
+  {
+    maxAmount: 10000,
+    fee: 0.005,
+    feeType: TransactionPricingTierFeeType.PERCENT,
+  }, // $5001–10000: 0.5% fee
   {
     maxAmount: Infinity,
-    fee: 0.003,
+    fee: 0.0045,
     feeType: TransactionPricingTierFeeType.PERCENT,
-  }, // $5001+: 0.3% fee
+  }, // $10000+: 0.45% fee
 ];
 
 /**
@@ -90,6 +95,6 @@ export function calculateTransactionFees(amount: number) {
     governmentTax,
     totalFee: operationCost + governmentTax,
     tier,
-    governmentRate: GOVERNMENT_TAX_RATE
+    governmentRate: GOVERNMENT_TAX_RATE,
   };
 }
