@@ -202,19 +202,17 @@ function TransactionFormComponent({
       const amountInUSD = totalPrice * selectedCurrency.to_dollar_rate;
 
       // Calculate fees in USD
-      const {
-        operationCost,
-        governmentTax,
-        totalFee,
-        tier,
-        governmentRate
-      } = calculateTransactionFees(amountInUSD);
-      
+      const { operationCost, governmentTax, totalFee, tier, governmentRate } =
+        calculateTransactionFees(amountInUSD);
+
       // Convert back to selected currency
       const usdToSelectedRate = 1 / selectedCurrency.to_dollar_rate;
-      const operationCostInSelectedCurrency = Math.round(operationCost * usdToSelectedRate * 100) / 100;
-      const governmentTaxInSelectedCurrency = Math.round(governmentTax * usdToSelectedRate * 100) / 100;
-      const totalFeeInSelectedCurrency = Math.round(totalFee * usdToSelectedRate * 100) / 100;
+      const operationCostInSelectedCurrency =
+        Math.round(operationCost * usdToSelectedRate * 100) / 100;
+      const governmentTaxInSelectedCurrency =
+        Math.round(governmentTax * usdToSelectedRate * 100) / 100;
+      const totalFeeInSelectedCurrency =
+        Math.round(totalFee * usdToSelectedRate * 100) / 100;
 
       return {
         operationCost: operationCostInSelectedCurrency,
@@ -222,9 +220,12 @@ function TransactionFormComponent({
         totalFee: totalFeeInSelectedCurrency,
         tier,
         governmentRate,
-        formattedTierInfo: tier.feeType === 'fixed' 
-          ? `${Math.round(tier.fee * usdToSelectedRate * 100) / 100} ${selectedCurrency.sign}` 
-          : `${(tier.fee * 100).toFixed(1)}%`
+        formattedTierInfo:
+          tier.feeType === "fixed"
+            ? `${Math.round(tier.fee * usdToSelectedRate * 100) / 100} ${
+                selectedCurrency.sign
+              }`
+            : `${(tier.fee * 100).toFixed(1)}%`,
       };
     } catch (error) {
       console.error("Fee calculation error:", error);
@@ -233,41 +234,55 @@ function TransactionFormComponent({
   };
 
   // Calculate fees breakdown
-  const feeBreakdown = useMemo(() => getFeeBreakdown(), [selectedCurrency, totalPrice]) 
-
- const renderFeeBreakdown = () => {
-  if (!feeBreakdown || !selectedCurrency) return null;
-
-  return (
-    <View
-      style={{
-        backgroundColor: hexToRgba(palette.accent, 0.1),
-        borderRadius: 8,
-        padding: 10,
-        marginTop: 5,
-      }}
-    >
-      <ThemedText type="md" weight="bold" style={{ color: palette.accent, marginBottom: 5 }}>
-        تفاصيل الرسوم :
-      </ThemedText>
-
-      <View style={{ marginLeft: 10 }}>
-        <ThemedText type="sm">
-          {`• رسوم المعاملة${feeBreakdown.tier ? ` (${feeBreakdown.formattedTierInfo})` : ''} : ${selectedCurrency.sign} ${feeBreakdown.operationCost}`}
-        </ThemedText>
-
-        <ThemedText type="sm">
-          {`• الضريبة الحكومية (${(feeBreakdown.governmentRate * 100).toFixed(1)}%) : ${selectedCurrency.sign} ${feeBreakdown.governmentTax}`}
-        </ThemedText>
-
-        <ThemedText type="md" weight="bold" style={{ marginTop: 5, color: palette.accent }}>
-          {`سعر المعاملة : ${selectedCurrency.sign} ${feeBreakdown.totalFee}`}
-        </ThemedText>
-      </View>
-    </View>
+  const feeBreakdown = useMemo(
+    () => getFeeBreakdown(),
+    [selectedCurrency, totalPrice]
   );
-};
- 
+
+  const renderFeeBreakdown = () => {
+    if (!feeBreakdown || !selectedCurrency) return null;
+
+    return (
+      <View
+        style={{
+          backgroundColor: hexToRgba(palette.accent, 0.1),
+          borderRadius: 8,
+          padding: 10,
+          marginTop: 5,
+        }}
+      >
+        <ThemedText
+          type="md"
+          weight="bold"
+          style={{ color: palette.accent, marginBottom: 5 }}
+        >
+          تفاصيل الرسوم :
+        </ThemedText>
+
+        <View style={{ marginLeft: 10 }}>
+          <ThemedText type="sm">
+            {`• رسوم المعاملة${
+              feeBreakdown.tier ? ` (${feeBreakdown.formattedTierInfo})` : ""
+            } : ${selectedCurrency.sign} ${feeBreakdown.operationCost}`}
+          </ThemedText>
+
+          <ThemedText type="sm">
+            {`• الضريبة الحكومية (${(feeBreakdown.governmentRate * 100).toFixed(
+              1
+            )}%) : ${selectedCurrency.sign} ${feeBreakdown.governmentTax}`}
+          </ThemedText>
+
+          <ThemedText
+            type="md"
+            weight="bold"
+            style={{ marginTop: 5, color: palette.accent }}
+          >
+            {`سعر المعاملة : ${selectedCurrency.sign} ${feeBreakdown.totalFee}`}
+          </ThemedText>
+        </View>
+      </View>
+    );
+  };
 
   const getBorderColor = () => {
     if (formState.errors.price?.totalPrice) return palette.error;
@@ -397,7 +412,7 @@ function TransactionFormComponent({
         )}
 
         {/* Transaction fee display */}
-        {selectedCurrency && defaultCurrency && (renderFeeBreakdown())}
+        {selectedCurrency && defaultCurrency && renderFeeBreakdown()}
 
         {/* Payment options section */}
         <ThemedText type="subtitle" weight="bold">
@@ -458,113 +473,6 @@ function TransactionFormComponent({
             )}
           />
         </View>
-      </View>
-    </View>
-  );
-}
-
-type OverviewBeforeSubmitProps = {
-  sender: {
-    email: string;
-    phone: string;
-    name: string;
-  };
-  reciever: {
-    email: string;
-    phone: string;
-    name: string;
-  };
-  transaction: {
-    amount: number;
-    currency: string;
-    currencyExchange: number;
-    paied: boolean;
-  };
-};
-export function OverviewBeforeSubmit({
-  sender,
-  reciever,
-  transaction,
-}: OverviewBeforeSubmitProps) {
-  const palette = useThemePalette();
-  return (
-    <View style={[styles.sectionContainer, { backgroundColor: palette.tint }]}>
-      <ThemedText type="l" weight="bold" style={{ textAlign: "center" }}>
-        تحقّق من المعطيات أدناه
-      </ThemedText>
-      <View
-        style={{
-          marginTop: 10,
-          gap: 5,
-
-          borderBottomWidth: 1,
-          borderBottomColor: palette.muted,
-          paddingBottom: 10,
-        }}
-      >
-        <ThemedText weight="bold">
-          أسم المرسل: <ThemedText>{sender?.name ?? "غير معلوم"}</ThemedText>
-        </ThemedText>
-        <ThemedText weight="bold">
-          البريد الألكتروني للمرسل:{" "}
-          <ThemedText>{sender?.email ?? "غير معلوم"}</ThemedText>
-        </ThemedText>
-        <ThemedText weight="bold">
-          رقم هاتف المرسل:{" "}
-          <ThemedText>{sender?.phone ?? "غير معلوم"}</ThemedText>
-        </ThemedText>
-      </View>
-      <View
-        style={{
-          marginTop: 10,
-          gap: 5,
-
-          borderBottomWidth: 1,
-          borderBottomColor: palette.muted,
-          paddingBottom: 10,
-        }}
-      >
-        <ThemedText weight="bold">
-          أسم المستقبل: <ThemedText>{reciever?.name ?? "غير معلوم"}</ThemedText>
-        </ThemedText>
-        <ThemedText weight="bold">
-          البريد الألكتروني للمستقبل:{" "}
-          <ThemedText>{reciever?.email ?? "غير معلوم"}</ThemedText>
-        </ThemedText>
-        <ThemedText weight="bold">
-          رقم هاتف المستقبل:{" "}
-          <ThemedText>{reciever?.phone ?? "غير معلوم"}</ThemedText>
-        </ThemedText>
-      </View>
-      <View
-        style={{
-          marginTop: 10,
-          gap: 5,
-
-          borderBottomWidth: 1,
-          borderBottomColor: palette.muted,
-          paddingBottom: 10,
-        }}
-      >
-        <ThemedText weight="bold">
-          المبلغ: <ThemedText>{transaction?.amount ?? "غير معلوم"}</ThemedText>
-        </ThemedText>
-        <ThemedText weight="bold">
-          العملة:{" "}
-          <ThemedText>{transaction?.currency ?? "غير معلوم"}</ThemedText>
-        </ThemedText>
-        <ThemedText weight="bold">
-          صرف العملات:{" "}
-          <ThemedText>
-            {transaction?.currencyExchange ?? "غير معلوم"}
-          </ThemedText>
-        </ThemedText>
-        <ThemedText weight="bold">
-          دفعة:{" "}
-          <ThemedText>
-            {transaction != null && transaction.paied == true ? "نعم" : "لا"}
-          </ThemedText>
-        </ThemedText>
       </View>
     </View>
   );
@@ -634,18 +542,30 @@ export default function AddTransactionScreen() {
       Alert.alert("مستحيل", "لايمكن مواصلة العملية لأنه لاتوجد عملة محددة");
       return;
     }
+    const usdAmount = data.price.totalPrice * selectedCurrency.to_dollar_rate; // calculated based on chosen currency
+    const { governmentTax, operationCost } =
+      calculateTransactionFees(usdAmount);
     const { data: trxData, error: trxErr } = await supabase
       .from("transactions")
       .insert({
         currency_id: selectedCurrency.id,
         original_amount: data.price.totalPrice,
-        amount_usd: data.price.totalPrice * selectedCurrency.to_dollar_rate, // calculated based on chosen currency
+        amount_usd: usdAmount,
         exchange_rate: selectedCurrency.to_dollar_rate,
         is_paid_full: data.price.isPaidFull,
         first_installment: data.price.firstInstallment,
         created_by: profile?.user_id,
         sender: data.sender,
         receiver: data.receiver,
+        // calculate fees
+        // these calculations should happen at a server level to be secure and can't be modified. or at database trigger level
+        // due to time constraints we implemented it here but will be moved in the future
+        operation_cost_usd: operationCost, // consts are returned in USD by default
+        operation_cost_original:
+          operationCost * (1 / selectedCurrency.to_dollar_rate),
+        operation_tax_usd: governmentTax,
+        operation_tax_original:
+          governmentTax * (1 / selectedCurrency.to_dollar_rate),
       })
       .select("id")
       .single();
@@ -723,7 +643,7 @@ export default function AddTransactionScreen() {
           <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>
             <ThemedButton
               onPress={handleSubmit(onSubmit)}
-              disabled={!profile?.currency}
+              disabled={!profile?.currency || formState.isSubmitting}
             >
               <ThemedText
                 style={{ textAlign: "center", color: palette.background }}

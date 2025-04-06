@@ -235,6 +235,44 @@ export default function TransactionDetailsScreen() {
               </View>
             </View>
 
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <ThemedText weight="medium" style={{ color: palette.accent }}>
+              سعر المعاملة (سعر أضافي) :
+              </ThemedText>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <View>
+                  <ThemedText
+                    type="l"
+                    style={{ color: palette.error, textAlign: "center" }}
+                  >
+                    {`${Math.round((tObj.operation_cost_usd + tObj.operation_tax_usd) * 100) / 100} USD`}
+                  </ThemedText>
+                  <ThemedText
+                    style={{ color: palette.success, textAlign: "center" }}
+                  >
+                    {`${Math.round((tObj.operation_cost_original + tObj.operation_tax_original) * 100) / 100} ${tObj.currency.sign}`}
+                  </ThemedText>
+                </View>
+                <IconSymbol
+                  name="arrow.up.arrow.down"
+                  size={20}
+                  color={palette.text}
+                />
+              </View>
+            </View>
+
             <View
               style={{
                 height: 5,
