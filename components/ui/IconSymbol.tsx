@@ -3,11 +3,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { SymbolWeight } from "expo-symbols";
 import React from "react";
-import {
-  OpaqueColorValue,
-  StyleProp,
-  TextStyle
-} from "react-native";
+import { OpaqueColorValue, StyleProp, TextStyle } from "react-native";
 
 // Add your SFSymbol to MaterialIcons mappings here.
 const MAPPING = {
@@ -32,7 +28,10 @@ const MAPPING = {
   "square.and.arrow.down": "file-download",
   "arrow.up.arrow.down": "swap-vert",
   "photo.fill": "add-photo-alternate",
-  "coloncurrencysign.square.fill" : "currency-exchange"
+  "coloncurrencysign.square.fill": "currency-exchange",
+  "chevron.down": "keyboard-arrow-down",
+  "chevron.up": "keyboard-arrow-up",
+  "archivebox.fill": "archive"
 } as Partial<
   Record<
     import("expo-symbols").SymbolViewProps["name"],
