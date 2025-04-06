@@ -166,7 +166,7 @@ export default function TransactionDetailsScreen() {
                     {tObj.is_paid_full
                       ? `${Math.round(tObj.amount_usd)} USD`
                       : `${Math.round(
-                          tObj.first_installment ?? 0 * tObj.exchange_rate
+                          (tObj.first_installment ?? 0) * tObj.exchange_rate
                         )} USD`}
                   </ThemedText>
                   <ThemedText
@@ -214,7 +214,7 @@ export default function TransactionDetailsScreen() {
                       ? "0"
                       : `${Math.round(
                           tObj.amount_usd -
-                            (tObj.first_installment ?? 0 * tObj.exchange_rate)
+                            ((tObj.first_installment ?? 0) * tObj.exchange_rate)
                         )} USD`}
                   </ThemedText>
                   <ThemedText
