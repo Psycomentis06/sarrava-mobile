@@ -72,3 +72,45 @@ export enum TransactionStatus {
   CONFIRMED = "CONFIRMED",
   FAILED = "FAILED",
 }
+
+export type AgentTransactionsAnalytics = {
+  agent_id?: string;
+  agent?: UserProfile;
+  total_transactions: number;
+  confirmed_transactions: number;
+  pending_transactions: number;
+  failed_transactions: number;
+  canceled_transactions: number;
+  confirmed_usd_amount: number;
+  pending_usd_amount: number;
+  failed_usd_amount: number;
+  canceled_usd_amount: number;
+  confirmed_earnings_usd: number;
+  confirmed_tax_fees_usd: number;
+  pending_earnings_usd: number;
+  pending_tax_fees_usd: number;
+  avg_confirmed_transaction_usd: number;
+  first_transaction_date: number | string;
+  last_transaction_date: number | string;
+  success_rate_percent: number;
+  current_month_confirmed_transactions: number;
+  current_month_confirmed_usd_amount: number;
+  current_month_earnings_usd: number;
+};
+
+export type Report = {
+  id: string; // UUID
+  agent_id: string; // UUID
+  title: string; // Text
+  description?: string; // Text (optional)
+  from_date: string | number ; // Date
+  to_date: string | number ; // Date
+  total_transactions: number; // Integer
+  confirmed_transactions: number; // Integer
+  pending_transactions: number; // Integer
+  failed_transactions: number; // Integer
+  canceled_transactions: number; // Integer
+  confirmed_usd_amount: number; // Numeric
+  confirmed_earnings_usd: number; // Numeric
+  created_at?: Date; // Timestamp (optional)
+};
