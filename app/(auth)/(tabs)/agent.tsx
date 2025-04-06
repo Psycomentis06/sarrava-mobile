@@ -1,3 +1,4 @@
+import ItemsNotFound from "@/components/svg/ItemsNotFound";
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
@@ -129,6 +130,23 @@ export default function AgentScreen() {
         keyExtractor={(i) => i.id}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
         style={{ paddingHorizontal: 10 }}
+        ListEmptyComponent={
+            <View>
+              <ItemsNotFound width="100%" height="100%" />
+              <ThemedText
+                type="md"
+                weight="medium"
+                style={{
+                  position: "absolute",
+                  bottom: 100,
+                  left: 50,
+                  opacity: 0.6,
+                }}
+              >
+                لم نتمكن من العثور على أي وكيل
+              </ThemedText>
+            </View>
+          }
         renderItem={({ item }) => (
           <View style={{ borderRadius: 10, overflow: "hidden" }}>
             <Pressable
