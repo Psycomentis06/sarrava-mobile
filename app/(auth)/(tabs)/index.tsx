@@ -8,16 +8,43 @@ import ReciptTax from "@/components/svg/ReciptTax";
 import ReportBox from "@/components/svg/ReportBox";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useUserProfile } from "@/contexts/profile";
+import { UseSupabaseSession } from "@/hooks/useSupabaseSession";
+import { useThemePalette } from "@/hooks/useThemePalette";
+import { supabase } from "@/lib/supabase";
 import { hexToRgba } from "@/utils/colors";
+import { AgentTransactionsAnalytics } from "@/utils/models";
 import { Link, useNavigation } from "expo-router";
-import { useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+type AnalyticsCardsComponentProps = {
+  transactionsAnalytics: AgentTransactionsAnalytics | null;
+  initialVisibleCards: number;
+};
+
+type AnalyticsCardComponentProps = {
+  icon: React.ReactNode;
+  label: string | number;
+  value: string | number;
+};
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const [transactionsAnalytics, setTransactionsAnalytics] =
+    useState<AgentTransactionsAnalytics | null>(null);
+  const [isSessionLoading, session] = UseSupabaseSession();
+  const { profile } = useUserProfile();
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 200],
@@ -31,6 +58,29 @@ export default function HomeScreen() {
     extrapolate: "clamp",
   });
 
+  const getAnalytics = async () => {
+    const { data, error } = await supabase
+      .from("transactions_agent_stats_view")
+      .select()
+      .eq("agent_id", session?.user.id)
+      .single();
+
+    if (error) {
+      Alert.alert("خطأ", "حدث خطأ أثناء تحميل بيانات الأحصائيات");
+    }
+
+    if (data) {
+      console.log(data);
+      setTransactionsAnalytics(data);
+    }
+  };
+
+  useEffect(() => {
+    if (session) {
+      getAnalytics();
+    }
+  }, [isSessionLoading]);
+
   return (
     <View style={{ flex: 1, backgroundColor: "#3628B7" }}>
       {/* Parallax Header */}
@@ -41,7 +91,7 @@ export default function HomeScreen() {
         ]}
       >
         <Animated.Text style={[styles.headerText, { opacity: textOpacity }]}>
-          مرحبا, محمد أمين ولد الحاج
+          مرحبا, {`${profile?.firstname} ${profile?.lastname}`}
         </Animated.Text>
         <Pressable>
           <IconSymbol name="bell" size={24} color="white" />
@@ -60,101 +110,10 @@ export default function HomeScreen() {
         <ThemedView style={styles.container}>
           {/* Overview Stats */}
           <View style={{ paddingTop: 40, paddingBottom: 20 }}>
-            <View
-              style={{ flexDirection: "row", justifyContent: "space-evenly" }}
-            >
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  borderColor: hexToRgba("#fff", 0.3),
-                  padding: 5,
-                  width: "45%",
-                  flexDirection: "row",
-                  gap: 5,
-                  alignItems: "center",
-                }}
-              >
-                <ArrowsExchange />
-                <View>
-                  <Text style={{ opacity: 0.7, fontFamily: "Tajawal" }}>
-                    أجمالي المعاملات
-                  </Text>
-                  <Text style={{ fontWeight: "semibold" }}>$30860</Text>
-                </View>
-              </View>
-
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  borderColor: hexToRgba("#fff", 0.3),
-                  padding: 5,
-                  width: "45%",
-                  flexDirection: "row",
-                  gap: 5,
-                  alignItems: "center",
-                }}
-              >
-                <Money />
-                <View>
-                  <Text style={{ opacity: 0.7, fontFamily: "Tajawal" }}>
-                    أجمالي الإرادات
-                  </Text>
-                  <Text style={{ fontWeight: "semibold" }}>$30000</Text>
-                </View>
-              </View>
-            </View>
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-evenly",
-                marginTop: 20,
-              }}
-            >
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  borderColor: hexToRgba("#fff", 0.3),
-                  padding: 5,
-                  width: "45%",
-                  flexDirection: "row",
-                  gap: 5,
-                  alignItems: "center",
-                }}
-              >
-                <ReciptTax />
-                <View>
-                  <Text style={{ opacity: 0.7, fontFamily: "Tajawal" }}>
-                    أجمالي الرسوم
-                  </Text>
-                  <Text style={{ fontWeight: "semibold" }}>$860</Text>
-                </View>
-              </View>
-
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  borderColor: hexToRgba("#fff", 0.3),
-                  padding: 5,
-                  width: "45%",
-                  flexDirection: "row",
-                  gap: 5,
-                  alignItems: "center",
-                }}
-              >
-                <Money2 />
-                <View>
-                  <Text style={{ opacity: 0.7, fontFamily: "Tajawal" }}>
-                    الأرباح
-                  </Text>
-                  <Text style={{ fontWeight: "semibold" }}>$9000</Text>
-                </View>
-              </View>
-            </View>
+            <AnalyticsCards
+              transactionsAnalytics={transactionsAnalytics}
+              initialVisibleCards={4}
+            />
           </View>
 
           {/* Separator */}
@@ -270,6 +229,175 @@ export default function HomeScreen() {
   );
 }
 
+// Analytics Cards Component
+const AnalyticsCards = ({
+  transactionsAnalytics,
+  initialVisibleCards,
+}: AnalyticsCardsComponentProps) => {
+  const [showAllCards, setShowAllCards] = useState(false);
+
+  // Define all analytics cards with their properties
+  const analyticsCards = [
+    {
+      id: "total_transactions_amount",
+      icon: <ArrowsExchange />,
+      label: "أجمالي المعاملات",
+      value: `${Math.round(transactionsAnalytics?.confirmed_usd_amount ?? 0)}$`,
+    },
+    {
+      id: "expected_transactions",
+      icon: <Money2 />,
+      label: "أجمالي المعاملات المتوقّعة",
+      value: `${Math.round(
+        (transactionsAnalytics?.pending_usd_amount ?? 0) +
+          (transactionsAnalytics?.confirmed_usd_amount ?? 0)
+      )}$`,
+    },
+    {
+      id: "total_earnings",
+      icon: <Money />,
+      label: "أجمالي الإرادات",
+      value: `${Math.round(
+        transactionsAnalytics?.confirmed_earnings_usd ?? 0
+      )}$`,
+    },
+    {
+      id: "total_fees",
+      icon: <ReciptTax />,
+      label: "أجمالي الرسوم",
+      value: `${Math.round(
+        transactionsAnalytics?.confirmed_tax_fees_usd ?? 0
+      )}$`,
+    },
+    {
+      id: "expected_earnings",
+      icon: <Money />,
+      label: "أجمالي الإرادات المتوقّعة",
+      value: `${Math.round(
+        (transactionsAnalytics?.pending_earnings_usd ?? 0) +
+          (transactionsAnalytics?.confirmed_earnings_usd ?? 0)
+      )}`,
+    },
+    {
+      id: "expected_fees",
+      icon: <Money />,
+      label: "أجمالي الرسوم المتوقعة",
+      value: `${Math.round(
+        (transactionsAnalytics?.pending_tax_fees_usd ?? 0) +
+          (transactionsAnalytics?.confirmed_tax_fees_usd ?? 0)
+      )}`,
+    },
+    {
+      id: "transactions_count",
+      icon: <Money2 />,
+      label: "عدد المعاملات",
+      value: transactionsAnalytics?.total_transactions ?? 0,
+    },
+    {
+      id: "confirmed_transactions",
+      icon: <ReciptTax />,
+      label: "المعاملات المكتملة",
+      value: `${Math.round(
+        transactionsAnalytics?.confirmed_transactions ?? 0
+      )}`,
+    },
+    {
+      id: "pending_transactions",
+      icon: <Money2 />,
+      label: "المعاملات المعلقة",
+      value: `${transactionsAnalytics?.pending_transactions ?? 0}`,
+    },
+    {
+      id: "success_rate",
+      icon: <Money2 />,
+      label: "معدل النجاح",
+      value: `${Math.round(transactionsAnalytics?.success_rate_percent ?? 0)}%`,
+    },
+  ];
+
+  // Calculate how many cards to show
+  const visibleCards = showAllCards
+    ? analyticsCards
+    : analyticsCards.slice(0, initialVisibleCards);
+
+  // Determine if we need a "Show More" button
+  const hasMoreCards = analyticsCards.length > initialVisibleCards;
+  const palette = useThemePalette();
+
+  return (
+    <>
+      <View style={styles.cardsContainer}>
+        {visibleCards.map((card, index) => (
+          <AnalyticsCard
+            key={card.id}
+            icon={card.icon}
+            label={card.label}
+            value={card.value}
+          />
+        ))}
+      </View>
+
+      {hasMoreCards && (
+        <Pressable
+          style={[styles.showMoreButton]}
+          onPress={() => setShowAllCards(!showAllCards)}
+          android_ripple={{ color: "rgba(0,0,0,0.25)" }}
+        >
+          <IconSymbol
+            name="chevron.up"
+            size={24}
+            color={palette.accent}
+            style={{ display: showAllCards ? "flex" : "none" }}
+          />
+          <Text style={[styles.showMoreButtonText, { color: palette.accent }]}>
+            {showAllCards ? "عرض أقل" : "عرض المزيد"}
+          </Text>
+          <IconSymbol
+            name="chevron.down"
+            size={24}
+            color={palette.accent}
+            style={{ display: showAllCards ? "none" : "flex" }}
+          />
+        </Pressable>
+      )}
+    </>
+  );
+};
+
+// Individual Analytics Card Component
+const AnalyticsCard = ({ icon, label, value }: AnalyticsCardComponentProps) => {
+  return (
+    <View
+      style={{
+        borderWidth: 1,
+        borderRadius: 10,
+        borderColor: "rgba(0,0,0,0.3)",
+        padding: 8,
+        width: "45%",
+        flexDirection: "row",
+        marginBottom: 20,
+        minHeight: 70,
+      }}
+    >
+      <View style={{ marginRight: 5, alignSelf: "center" }}>{icon}</View>
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{
+            opacity: 0.7,
+            fontFamily: "Tajawal",
+            flexWrap: "wrap",
+            fontSize: 13,
+          }}
+          numberOfLines={2}
+        >
+          {label}
+        </Text>
+        <Text style={{ fontWeight: "semibold" }}>{value}</Text>
+      </View>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   header: {
     position: "absolute",
@@ -315,5 +443,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     shadowRadius: 4,
     elevation: 4,
+  },
+  cardsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-evenly",
+  },
+  showMoreButton: {
+    alignSelf: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 10,
+    alignItems: "center",
+  },
+  showMoreButtonText: {
+    fontFamily: "Tajawal",
+    fontWeight: "500",
   },
 });
