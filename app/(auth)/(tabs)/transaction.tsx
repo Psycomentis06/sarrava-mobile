@@ -36,7 +36,7 @@ export default function TransactionScreen() {
   const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isSessionLoading, session] = UseSupabaseSession();
-  const [isDataLoading, setIsDataLoading] = useState<boolean>(false)
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
   const [
     isUpdateTransactionStatusModalVisible,
     setIsUpdateTransactionStatusModalVisible,
@@ -82,7 +82,7 @@ export default function TransactionScreen() {
 
   const getTransactions = async () => {
     try {
-      setIsDataLoading(true)
+      setIsDataLoading(true);
       const query = supabase.from("transactions").select(
         `
            *,
@@ -148,7 +148,7 @@ export default function TransactionScreen() {
       Alert.alert("خطأ", "حدث خطأ ما أثناء تحميل المعلومات");
       return;
     } finally {
-      setIsDataLoading(false)
+      setIsDataLoading(false);
     }
   };
 
@@ -173,9 +173,18 @@ export default function TransactionScreen() {
       [
         {
           text: "تأكيد",
+          style: "default",
           onPress: () => {
             setIsUpdateTransactionStatusModalVisible(false);
             updateTransactionStatus(selectedTransaction, status);
+            setSelectedTransaction(null);
+          },
+        },
+        {
+          text: "إلغاء",
+          style: "cancel",
+          onPress: () => {
+            setIsUpdateTransactionStatusModalVisible(false);
             setSelectedTransaction(null);
           },
         },
