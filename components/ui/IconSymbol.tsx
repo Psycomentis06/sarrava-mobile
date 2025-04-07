@@ -31,7 +31,8 @@ const MAPPING = {
   "coloncurrencysign.square.fill": "currency-exchange",
   "chevron.down": "keyboard-arrow-down",
   "chevron.up": "keyboard-arrow-up",
-  "archivebox.fill": "archive"
+  "archivebox.fill": "archive",
+  "yensign.circle": "price-change"
 } as Partial<
   Record<
     import("expo-symbols").SymbolViewProps["name"],

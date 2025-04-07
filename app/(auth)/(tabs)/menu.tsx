@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useSupabaseHasPermissions } from "@/hooks/useSupabaseHasPermissions";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
 import { Link, useNavigation } from "expo-router";
@@ -12,6 +13,7 @@ export default function MoreOptions() {
   const navigation = useNavigation();
   const { tint, text, error } = useThemePalette();
   const insets = useSafeAreaInsets();
+  const {hasPermission: hasAdminPermission, isLoading} = useSupabaseHasPermissions(['admin'])
   const styles = StyleSheet.create({
     mainTitle: {
       textAlign: "center",
@@ -49,7 +51,22 @@ export default function MoreOptions() {
       }}
     >
       <View>
-        <Link href="/(auth)/(tabs)/currency_rates" asChild>
+        <Link href="/(auth)/(tabs)/reports" asChild style={{display: !isLoading && hasAdminPermission ? 'flex' : 'none'}}>
+          <Pressable
+            style={styles.menuItem}
+            android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+          >
+            <IconSymbol
+              size={24}
+              name="archivebox.fill"
+              color={text}
+              style={{ marginHorizontal: 5 }}
+            />
+            <ThemedText style={{ marginLeft: 5 }}>التقارير</ThemedText>
+          </Pressable>
+        </Link>
+
+        <Link href="/(auth)/(tabs)/currency_rates" asChild style={{display: !isLoading && hasAdminPermission ? 'flex' : 'none'}}>
           <Pressable
             style={styles.menuItem}
             android_ripple={{ color: "rgba(0,0,0,0.26)" }}
@@ -63,6 +80,22 @@ export default function MoreOptions() {
             <ThemedText style={{ marginLeft: 5 }}>أسعار الصرف</ThemedText>
           </Pressable>
         </Link>
+
+        <Link href="/(auth)/transaction_tariffs" asChild>
+          <Pressable
+            style={styles.menuItem}
+            android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+          >
+            <IconSymbol
+              size={24}
+              name="yensign.circle"
+              color={text}
+              style={{ marginHorizontal: 5 }}
+            />
+            <ThemedText style={{ marginLeft: 5 }}>تعريفة المعاملات</ThemedText>
+          </Pressable>
+        </Link>
+
         <Pressable
           style={styles.menuItem}
           onPress={() => navigation.navigate("settings" as never)}
