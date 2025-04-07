@@ -3,6 +3,7 @@ import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
 import { Report } from "@/utils/models";
@@ -85,6 +86,20 @@ export default function ReportsScreen() {
               <ThemedText>بحث</ThemedText>
             </ThemedButton>
           ) : null}
+
+          <ThemedButton
+            style={{ width: 45, borderRadius: "50%" }}
+            onPress={() => router.navigate("/(auth)/report/add")}
+          >
+            <ThemedText>
+              <IconSymbol
+                style={{ textAlign: "center" }}
+                size={24}
+                name="plus.app"
+                color={palette.background}
+              />
+            </ThemedText>
+          </ThemedButton>
         </View>
       </View>
 
@@ -124,13 +139,12 @@ export default function ReportsScreen() {
                 color: "rgba(0,0,0,0.26)",
                 foreground: true,
               }}
-              onPress={
-                () => 
+              onPress={() =>
                 router.navigate({
                   pathname: "/(auth)/report/[id]",
                   params: { id: item.id, report: JSON.stringify(item) },
                 })
-               }
+              }
             >
               <ThemedText type="l" weight="medium">
                 {item.title}
