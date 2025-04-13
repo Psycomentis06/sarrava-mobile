@@ -2,11 +2,14 @@ import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
+import { useSupabaseHasPermissions } from "@/hooks/useSupabaseHasPermissions";
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
 
 export default function TabLayout() {
+  const { hasPermission: hasAdminPermission, isLoading } =
+    useSupabaseHasPermissions(["admin"]);
   return (
     <Tabs
       screenOptions={{
@@ -53,6 +56,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="agent"
         options={{
+          // Only show for admins
+          href:
+            !isLoading && hasAdminPermission ? "/(auth)/(tabs)/agent" : null,
           title: "الوكلاء",
           tabBarIcon: ({ color }) => (
             <IconSymbol
@@ -67,8 +73,31 @@ export default function TabLayout() {
       <Tabs.Screen
         name="reports"
         options={{
+          // don't show this link in admin session (it will be accessible from menu)
+          href:
+            !isLoading && hasAdminPermission ? null : "/(auth)/(tabs)/reports",
+          title: "التقارير",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="archivebox.fill" color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="currency_rates"
+        options={{
+          // don't show this link in admin session (it will be accessible from menu)
+          href:
+            !isLoading && hasAdminPermission
+              ? null
+              : "/(auth)/(tabs)/currency_rates",
+          title: "أسعار الصرف",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol
+              size={28}
+              name="coloncurrencysign.square.fill"
+              color={color}
+            />
           ),
         }}
       />
@@ -88,13 +117,6 @@ export default function TabLayout() {
         options={{
           title: "Home old screen",
           href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="currency_rates"
-        options={{
-          href: null, // maybe in agent screen we show it
         }}
       />
     </Tabs>
