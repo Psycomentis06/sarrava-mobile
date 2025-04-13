@@ -99,51 +99,6 @@ export default function CreateReportScreen() {
   const fromDate = watch("fromDate");
   const toDate = watch("toDate");
 
-  // When date range type changes, update the dates
-  useEffect(() => {
-    const today = new Date();
-    let newFromDate = fromDate;
-    let newToDate = today;
-
-    if (dateRangeType === "custom") {
-      return;
-    }
-    switch (dateRangeType) {
-      case "today":
-        newFromDate = new Date(today.setHours(0, 0, 0, 0));
-        newToDate = new Date();
-        break;
-      case "yesterday":
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        newFromDate = new Date(yesterday.setHours(0, 0, 0, 0));
-        newToDate = new Date(yesterday.setHours(23, 59, 59, 999));
-        break;
-      case "past7days":
-        newFromDate = new Date(new Date().setDate(today.getDate() - 7));
-        break;
-      case "past30days":
-        newFromDate = new Date(new Date().setDate(today.getDate() - 30));
-        break;
-      case "thisMonth":
-        newFromDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        break;
-      case "lastMonth":
-        newFromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        newToDate = new Date(today.getFullYear(), today.getMonth(), 0);
-        break;
-      case "thisYear":
-        newFromDate = new Date(today.getFullYear(), 0, 1);
-        break;
-      default:
-        // Custom - don't change dates
-        break;
-    }
-    setValue("fromDate", newFromDate);
-    setValue("toDate", newToDate);
-    checkExistingReport(newFromDate, newToDate);
-  }, [dateRangeType]);
-
   // Fetch agent's activity range on mount
   useEffect(() => {
     fetchAgentActivityRange();
@@ -192,12 +147,15 @@ export default function CreateReportScreen() {
       const { data: session } = await supabase.auth.getSession();
       const agentId = session?.session?.user?.id;
 
+      const fromDateCopy = new Date(fromDate);
+      const toDateCopy = new Date(toDate);
+
       const { data, error } = await supabase
         .from("reports")
         .select("id")
         .eq("agent_id", agentId)
-        .eq("from_date", fromDate.toISOString().split("T")[0])
-        .eq("to_date", toDate.toISOString().split("T")[0])
+        .eq("from_date", fromDateCopy.toISOString().split("T")[0])
+        .eq("to_date", toDateCopy.toISOString().split("T")[0])
         .maybeSingle();
 
       if (error) throw error;
@@ -212,6 +170,51 @@ export default function CreateReportScreen() {
     }
   };
 
+  // When date range type changes, update the dates
+  useEffect(() => {
+    const today = new Date();
+    let newFromDate = fromDate;
+    let newToDate = today;
+
+    if (dateRangeType === "custom") {
+      return;
+    }
+    switch (dateRangeType) {
+      case "today":
+        newFromDate = new Date(today.setHours(0, 0, 0, 0));
+        newToDate = new Date();
+        break;
+      case "yesterday":
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        newFromDate = new Date(yesterday.setHours(0, 0, 0, 0));
+        newToDate = new Date(yesterday.setHours(23, 59, 59, 999));
+        break;
+      case "past7days":
+        newFromDate = new Date(new Date().setDate(today.getDate() - 7));
+        break;
+      case "past30days":
+        newFromDate = new Date(new Date().setDate(today.getDate() - 30));
+        break;
+      case "thisMonth":
+        newFromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        break;
+      case "lastMonth":
+        newFromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        newToDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        break;
+      case "thisYear":
+        newFromDate = new Date(today.getFullYear(), 0, 1);
+        break;
+      default:
+        // Custom - don't change dates
+        break;
+    }
+    setValue("fromDate", newFromDate);
+    setValue("toDate", newToDate);
+    checkExistingReport(newFromDate, newToDate);
+  }, [dateRangeType]);
+
   useEffect(() => {
     if (dateRangeType === "custom") {
       checkExistingReport(fromDate, toDate);
@@ -225,8 +228,11 @@ export default function CreateReportScreen() {
     if (!agentActivity.hasTransactions) return false;
 
     // Check if selected date range is within agent's activity period
-    const selectedFromDate = new Date(fromDate.setHours(0, 0, 0, 0));
-    const selectedToDate = new Date(toDate.setHours(23, 59, 59, 999));
+    const selectedFromDate = new Date(fromDate);
+    selectedFromDate.setHours(0, 0, 0, 0);
+
+    const selectedToDate = new Date(toDate);
+    selectedToDate.setHours(23, 59, 59, 999);
 
     // Only proceed if we have valid dates
     if (
