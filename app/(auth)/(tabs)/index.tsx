@@ -17,12 +17,11 @@ import { AgentTransactionsAnalytics } from "@/utils/models";
 import { Link, useNavigation } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   Pressable,
   StyleSheet,
   Text,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -66,7 +65,9 @@ export default function HomeScreen() {
       .single();
 
     if (error) {
-      Alert.alert("خطأ", "حدث خطأ أثناء تحميل بيانات الأحصائيات");
+      // Alert.alert("خطأ", "حدث خطأ أثناء تحميل بيانات الأحصائيات");
+      console.error(error)
+      return
     }
 
     if (data) {
@@ -180,25 +181,27 @@ export default function HomeScreen() {
                 marginTop: 10,
               }}
             >
-              <Pressable
-                style={styles.quickActionButton}
-                android_ripple={{
-                  color: "rgba(0, 0, 0, 0.26)",
-                  foreground: true,
-                }}
-                android_disableSound
-              >
-                <ReportBox />
-                <Text
-                  style={{
-                    textAlign: "center",
-                    fontSize: 18,
-                    fontFamily: "Tajawal",
+              <Link href="/(auth)/(tabs)/reports" asChild>
+                <Pressable
+                  style={styles.quickActionButton}
+                  android_ripple={{
+                    color: "rgba(0, 0, 0, 0.26)",
+                    foreground: true,
                   }}
+                  android_disableSound
                 >
-                  التقارير
-                </Text>
-              </Pressable>
+                  <ReportBox />
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      fontSize: 18,
+                      fontFamily: "Tajawal",
+                    }}
+                  >
+                    التقارير
+                  </Text>
+                </Pressable>
+              </Link>
 
               <Link href="/(auth)/(tabs)/currency_rates" asChild>
                 <Pressable
