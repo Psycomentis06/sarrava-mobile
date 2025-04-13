@@ -4,12 +4,8 @@ import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { supabase } from "@/lib/supabase";
-import { UserProfile } from "@/utils/models";
 import { newAgentSchema, NewAgentType } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { decode } from "base64-arraybuffer";
-import * as Filesystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -48,9 +44,14 @@ export default function AddAgentScreen() {
     }
   );
   const onSubmit = async (data: NewAgentType) => {
-    try {
-      // 1. Check if mail exists
-      /*
+    Alert.alert(
+      "مستحيل",
+      "لايمكن أضافة وكيل جديد في الوقت الرّاهن. لم تكتمل هذه الخاصيّة بعد"
+    );
+    return;
+    // try {
+    // 1. Check if mail exists
+    /*
       const { data: checkMailData, error: checkMailErr } = await supabase
         .from("user_profiles")
         .select()
@@ -64,79 +65,79 @@ export default function AddAgentScreen() {
       if (true) {
         return;
       }*/
-      // 2. Signup user in supabase
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp(
-        { email: getValues().email, password: getValues().password }
-      );
-      if (signUpErr) {
-        Alert.alert("خطأ", "فشل أضافة وكيل جديد");
-        console.error(signUpErr);
-        return;
-      }
-      // 3. Save image in supabase with newly created user id as the image name
-      if (!signUpData.user) {
-        Alert.alert(
-          "مشكل",
-          "حدث خلل ما مأدى لعدم أكمال العملية. تم أضافة الوكيل مما يكنه من تسجيل الدخول لاكن لم تتم أضافة الصورة أو المعلومات الخاصة بالوكيل. يمكنك الدخول بحساب الوكيل لتحدث البيانات"
-        );
-        return;
-      }
-      let imageUrl = null;
-      if (selectedImage) {
-        const imgBase64 = await Filesystem.readAsStringAsync(
-          selectedImage.uri,
-          { encoding: "base64" }
-        );
-        const { data: uploadImgData, error: uploadImgErr } =
-          await supabase.storage
-            .from("user-profiles")
-            .upload(signUpData.user.id, decode(imgBase64), {
-              upsert: true,
-              contentType: selectedImage.mimeType,
-            });
+    //   // 2. Signup user in supabase
+    //   const { data: signUpData, error: signUpErr } = await supabase.auth.signUp(
+    //     { email: getValues().email, password: getValues().password }
+    //   );
+    //   if (signUpErr) {
+    //     Alert.alert("خطأ", "فشل أضافة وكيل جديد");
+    //     console.error(signUpErr);
+    //     return;
+    //   }
+    //   // 3. Save image in supabase with newly created user id as the image name
+    //   if (!signUpData.user) {
+    //     Alert.alert(
+    //       "مشكل",
+    //       "حدث خلل ما مأدى لعدم أكمال العملية. تم أضافة الوكيل مما يكنه من تسجيل الدخول لاكن لم تتم أضافة الصورة أو المعلومات الخاصة بالوكيل. يمكنك الدخول بحساب الوكيل لتحدث البيانات"
+    //     );
+    //     return;
+    //   }
+    //   let imageUrl = null;
+    //   if (selectedImage) {
+    //     const imgBase64 = await Filesystem.readAsStringAsync(
+    //       selectedImage.uri,
+    //       { encoding: "base64" }
+    //     );
+    //     const { data: uploadImgData, error: uploadImgErr } =
+    //       await supabase.storage
+    //         .from("user-profiles")
+    //         .upload(signUpData.user.id, decode(imgBase64), {
+    //           upsert: true,
+    //           contentType: selectedImage.mimeType,
+    //         });
 
-        if (uploadImgErr) {
-          console.error("Failed to upload image", uploadImgErr);
-        }
+    //     if (uploadImgErr) {
+    //       console.error("Failed to upload image", uploadImgErr);
+    //     }
 
-        imageUrl = uploadImgData?.fullPath;
-      }
+    //     imageUrl = uploadImgData?.fullPath;
+    //   }
 
-      // 4. Save user profile data
-      const { data: insertProfileData, error: insertProfileErr } =
-        await supabase
-          .from("user_profiles")
-          .insert({
-            user_id: signUpData.user?.id,
-            firstname: data.firstname,
-            lastname: data.lastname,
-            email: data.email,
-            phone: data.phone,
-            address: data.address,
-            profile_picture: imageUrl,
-          })
-          .select("id")
-          .single();
+    //   // 4. Save user profile data
+    //   const { data: insertProfileData, error: insertProfileErr } =
+    //     await supabase
+    //       .from("user_profiles")
+    //       .insert({
+    //         user_id: signUpData.user?.id,
+    //         firstname: data.firstname,
+    //         lastname: data.lastname,
+    //         email: data.email,
+    //         phone: data.phone,
+    //         address: data.address,
+    //         profile_picture: imageUrl,
+    //       })
+    //       .select("id")
+    //       .single();
 
-      if (insertProfileErr) {
-        Alert.alert("فشل", "حدث خطأ أثناء تسجيل المعطيات التابعة للوكيل");
-        console.error(insertProfileErr);
-        return;
-      }
+    //   if (insertProfileErr) {
+    //     Alert.alert("فشل", "حدث خطأ أثناء تسجيل المعطيات التابعة للوكيل");
+    //     console.error(insertProfileErr);
+    //     return;
+    //   }
 
-      console.log("New agent profile: ", insertProfileData);
-      const newAgentProfile = insertProfileData as UserProfile;
-      router.replace({
-        pathname: "/(auth)/(tabs)/agent",
-        params: { id: newAgentProfile.id },
-      });
-    } catch (error) {
-      console.error("Error in onSubmit:", error);
-      Alert.alert(
-        "خطأ",
-        "حدث خطأ أثناء إضافة الوكيل الجديد. يرجى المحاولة مرة أخرى."
-      );
-    }
+    //   console.log("New agent profile: ", insertProfileData);
+    //   const newAgentProfile = insertProfileData as UserProfile;
+    //   router.replace({
+    //     pathname: "/(auth)/(tabs)/agent",
+    //     params: { id: newAgentProfile.id },
+    //   });
+    // } catch (error) {
+    //   console.error("Error in onSubmit:", error);
+    //   Alert.alert(
+    //     "خطأ",
+    //     "حدث خطأ أثناء إضافة الوكيل الجديد. يرجى المحاولة مرة أخرى."
+    //   );
+    // }
   };
   return (
     <>
