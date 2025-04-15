@@ -1,10 +1,12 @@
+import ItemsNotFound from "@/components/svg/ItemsNotFound";
+import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { useUserProfile } from "@/contexts/profile";
+import { useCurrencies } from "@/hooks/useCurrencies";
 import { useSupabaseHasPermissions } from "@/hooks/useSupabaseHasPermissions";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { supabase } from "@/lib/supabase";
 import { hexToRgba } from "@/utils/colors";
 import { Currency } from "@/utils/models";
 import {
@@ -12,13 +14,15 @@ import {
   UpdateCurrencyRateSchemaType,
 } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   TouchableOpacity,
@@ -95,14 +99,24 @@ function CurrencyItem({
 
 export default function CurrencyRatesScreen() {
   const insets = useSafeAreaInsets();
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const palette = useThemePalette();
+  const [isCurrenciesRefreshing, setIsCurrenciesRefreshing] =
+    useState<boolean>(false);
+  const {
+    currencies,
+    updateRate: updateCurrencyRate,
+    isLoading: isCurrenciesLoading,
+    error: currenciesError,
+    arError: currenciesArError,
+    reload: reloadCurrencies,
+  } = useCurrencies();
   const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(
     null
   );
   const [isContextMenuVisible, setIsContextMenuVisible] = useState(false);
   const [isUpdateRateModalVisible, setIsUpdateRateModalVisible] =
     useState(false);
+  const [searchInput, setSearchInput] = useState<string>("");
   const { hasPermission: hasAdminPermission } = useSupabaseHasPermissions([
     "admin",
   ]);
@@ -111,27 +125,6 @@ export default function CurrencyRatesScreen() {
     useForm<UpdateCurrencyRateSchemaType>({
       resolver: zodResolver(updateCurrencyRateSchema),
     });
-
-  useEffect(() => {
-    const fetchCurrencies = async () => {
-      const { data, error } = await supabase
-        .from("currencies")
-        .select()
-        .order("country_code", { ascending: true });
-      if (error != null) {
-        Alert.alert("حدث خطأ", error.message);
-        return;
-      }
-      console.log(
-        `${data.length} currency item fetched at ${new Date().toLocaleString()}`
-      );
-
-      setCurrencies(data as Currency[]);
-      setIsLoading(false);
-    };
-
-    fetchCurrencies();
-  }, []);
 
   const handleLongPress = (currency: Currency) => {
     setSelectedCurrency(currency);
@@ -167,46 +160,27 @@ export default function CurrencyRatesScreen() {
       setIsUpdateRateModalVisible(false);
       return;
     }
-    try {
-      const { error, status } = await supabase
-        .from("currencies")
-        .update({
-          to_dollar_rate: getValues().currencyRate,
-          updated_at: new Date(),
-          updated_by: userProfile?.firstname,
-        })
-        .eq("id", selectedCurrency?.id);
-      if (error) {
-        let msg = error.message;
-        if (status === 403) {
-          msg = "ليس لديك الصلاحيّة لتحديث سعر العملة";
-        }
-        Alert.alert("فشل العملية", msg);
+    if (selectedCurrency) {
+      if (userProfile) {
+        updateCurrencyRate(
+          selectedCurrency,
+          userProfile,
+          getValues().currencyRate
+        );
+
+        // reset model states
+        setIsUpdateRateModalVisible(false);
+        setIsContextMenuVisible(false);
+        setValue("currencyRate", 0);
+        // Alert.alert(
+        //   "خطأ تقني",
+        //   "خطأ تقني أثناء تحديث معدل العملة. الرّجاء محاولة لاحقا أو أتصل بالمسؤول"
+        // );
+      } else {
+        Alert.alert("خطأ", "حدث مشكل في تحديد هويتك");
       }
-
-      // update local state
-      setCurrencies((prev) =>
-        prev.map((c) =>
-          c.id === selectedCurrency?.id
-            ? {
-                ...c,
-                to_dollar_rate: getValues().currencyRate,
-                updated_at: Date.now(),
-                updated_by: userProfile?.firstname ?? "",
-              }
-            : c
-        )
-      );
-
-      // reset model states
-      setIsUpdateRateModalVisible(false);
-      setIsContextMenuVisible(false);
-      setValue("currencyRate", 0);
-    } catch (error) {
-      Alert.alert(
-        "خطأ تقني",
-        "خطأ تقني أثناء تحديث معدل العملة. الرّجاء محاولة لاحقا أو أتصل بالمسؤول"
-      );
+    } else {
+      Alert.alert("خطأ", "لايوجد عملة محددة");
     }
     setIsContextMenuVisible(false);
     setIsUpdateRateModalVisible(false);
@@ -307,21 +281,6 @@ export default function CurrencyRatesScreen() {
     </Modal>
   );
 
-  if (!isLoading && currencies.length === 0) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-        }}
-      >
-        <ThemedText>No element found</ThemedText>
-      </View>
-    );
-  }
   return (
     <ThemedView
       style={{
@@ -335,19 +294,129 @@ export default function CurrencyRatesScreen() {
       {renderContextMenu()}
       {renderUpdateRateModal()}
 
-      <FlatList
-        renderItem={({ item }) => (
-          <CurrencyItem
-            currency={item}
-            onLongPress={handleLongPress}
-            selected={item.id === userProfile?.currency}
+      <View style={{ padding: 10 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-evenly",
+            alignItems: "center",
+            paddingBottom: 20,
+            borderBottomWidth: 2,
+            borderColor: palette.tint,
+          }}
+        >
+          <ThemedTextInput
+            placeholder="بحث"
+            containerStyle={{ width: "75%" }}
+            returnKeyType="search"
+            value={searchInput}
+            onChangeText={setSearchInput}
           />
-        )}
-        data={currencies}
-        keyExtractor={(c) => String(c.id)}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-        style={{ paddingHorizontal: 10 }}
-      />
+
+          {
+            /* Debugging search on the web */ Platform.OS === "web" ? (
+              <ThemedButton style={{ width: 50 }}>
+                <ThemedText>Search</ThemedText>
+              </ThemedButton>
+            ) : (
+              ""
+            )
+          }
+        </View>
+      </View>
+
+      {isCurrenciesLoading ? (
+        <View
+          style={{
+            width: "100%",
+            height: "100%",
+            justifyContent: "center",
+            alignItems: "center",
+            opacity: 0.7,
+          }}
+        >
+          <View>
+            <ThemedText type="xl" weight="medium">
+              تحميل بيانات العملات...
+            </ThemedText>
+            <ActivityIndicator color={palette.accent} size={48} />
+          </View>
+        </View>
+      ) : (
+        <FlatList
+          ListEmptyComponent={
+            !isCurrenciesLoading && currencies.length === 0 ? (
+              <View>
+                <ItemsNotFound width="100%" height="100%" />
+                <ThemedText
+                  type="md"
+                  weight="medium"
+                  style={{
+                    position: "absolute",
+                    bottom: 100,
+                    left: 50,
+                    opacity: 0.6,
+                  }}
+                >
+                  لم نتمكن من العثور على أي عملة
+                </ThemedText>
+              </View>
+            ) : (
+              <></>
+            )
+          }
+          onRefresh={async () => {
+            setIsCurrenciesRefreshing(true);
+            try {
+              await reloadCurrencies();
+            } catch (err) {
+              console.error(err);
+            } finally {
+              setIsCurrenciesRefreshing(false);
+            }
+          }}
+          refreshing={isCurrenciesRefreshing}
+          renderItem={({ item }) => (
+            <View
+              style={{
+                // TODO: For performance reasons we can use filter by debouncing instead of updating
+                // display state
+                display:
+                  !searchInput ||
+                  (searchInput.trim().length > 0 &&
+                    (item.name?.includes(
+                      searchInput.trim().toLocaleLowerCase()
+                    ) ||
+                      item.ar_name
+                        ?.toLocaleLowerCase()
+                        .includes(searchInput.trim().toLocaleLowerCase()) ||
+                      item.sign
+                        ?.toLocaleLowerCase()
+                        .includes(searchInput.trim().toLocaleLowerCase()) ||
+                      item.country
+                        ?.toLowerCase()
+                        .includes(searchInput.trim().toLocaleLowerCase()) ||
+                      item.country_code
+                        ?.toLowerCase()
+                        .includes(searchInput.trim().toLocaleLowerCase()) ||
+                      item.flag === searchInput.trim().toLocaleLowerCase()))
+                    ? "flex"
+                    : "none",
+              }}
+            >
+              <CurrencyItem
+                currency={item}
+                onLongPress={handleLongPress}
+                selected={item.id === userProfile?.currency}
+              />
+            </View>
+          )}
+          data={currencies}
+          keyExtractor={(c) => String(c.id)}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+          style={{ paddingHorizontal: 10 }}
+        />
+      )}
     </ThemedView>
   );
 }
