@@ -34,7 +34,7 @@ const OFFLINE_CURRENCIES_CACHE_KEY = `offline:currencies:${CACHE_VERSION}:data`;
  * @returns UseCurrenciesHookReturnType
  */
 export function useCurrencies(): UseCurrenciesHookReturnType {
-  const { isConnected } = useNetInfo();
+  const { isInternetReachable } = useNetInfo();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [error, setError] = useState<Error | null>(null);
@@ -112,7 +112,7 @@ export function useCurrencies(): UseCurrenciesHookReturnType {
       if (_currencies_session_cache.length > 0) {
         setCurrencies(_currencies_session_cache);
         result = _currencies_session_cache;
-      } else if (isConnected) {
+      } else if (isInternetReachable) {
         result = await getCurrenciesFromSupabase();
       } else {
         result = await getCurrenciesFromOfflineCache();
@@ -131,7 +131,7 @@ export function useCurrencies(): UseCurrenciesHookReturnType {
     user: UserProfile,
     rate: number
   ): Promise<Currency> => {
-    if (!isConnected) {
+    if (!isInternetReachable) {
       const offlineError = new Error(
         "You can't update currency rate when you are in offline mode"
       );
@@ -209,7 +209,7 @@ export function useCurrencies(): UseCurrenciesHookReturnType {
 
   useEffect(() => {
     loadData().catch((err) => console.error("Error loading currencies:", err));
-  }, [isConnected]);
+  }, [isInternetReachable]);
 
   return {
     error,
