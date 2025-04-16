@@ -162,20 +162,25 @@ export default function CurrencyRatesScreen() {
     }
     if (selectedCurrency) {
       if (userProfile) {
-        updateCurrencyRate(
-          selectedCurrency,
-          userProfile,
-          getValues().currencyRate
-        );
+        try {
+          await updateCurrencyRate(
+            selectedCurrency,
+            userProfile,
+            getValues().currencyRate
+          );
 
-        // reset model states
-        setIsUpdateRateModalVisible(false);
-        setIsContextMenuVisible(false);
-        setValue("currencyRate", 0);
-        // Alert.alert(
-        //   "خطأ تقني",
-        //   "خطأ تقني أثناء تحديث معدل العملة. الرّجاء محاولة لاحقا أو أتصل بالمسؤول"
-        // );
+          // reset model states
+          setIsUpdateRateModalVisible(false);
+          setIsContextMenuVisible(false);
+
+          setValue("currencyRate", 0);
+        } catch (err) {
+          console.error(err);
+          Alert.alert(
+            "خطأ تقني",
+            "خطأ تقني أثناء تحديث معدل العملة. الرّجاء محاولة لاحقا أو أتصل بالمسؤول"
+          );
+        }
       } else {
         Alert.alert("خطأ", "حدث مشكل في تحديد هويتك");
       }
