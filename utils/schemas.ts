@@ -36,7 +36,7 @@ export const newTransactionPriceSchema = z
   .refine(
     (data) => {
       console.log(data);
-      
+
       if (!data.isPaidFull && !data.firstInstallment) {
         return false;
       }
@@ -49,7 +49,6 @@ export const newTransactionPriceSchema = z
   )
   .refine(
     (data) => {
-
       console.log(data);
       if (
         !data.isPaidFull &&
@@ -126,4 +125,45 @@ export const updateCurrencyRateSchema = z.object({
 
 export type UpdateCurrencyRateSchemaType = z.infer<
   typeof updateCurrencyRateSchema
+>;
+
+export const newAgentDepartmentSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .nonempty("أسم الفرع إجباري")
+    .max(50, "إسم الفرع طويل (أكثر من 50 حرف)"),
+  country: z
+    .object({
+      code: z.string(),
+      name: z.string(),
+      dialCode: z.string(),
+      name_ar: z.string(),
+    })
+    .refine(
+      (data) =>
+        data &&
+        "code" in data &&
+        "name" in data &&
+        "dialCode" in data &&
+        "name_ar" in data &&
+        Object.values(data).every((val) => val !== ""),
+      {
+        message: "بلد الفرع إجباريّة",
+      }
+    ),
+  city: z.string().trim().nonempty("مدينة الفرع إجباريّة"),
+  zipcode: z
+    .string()
+    .trim()
+    .nonempty("الرّمز البريدي إجباري")
+    .max(10, "الرمز البريدي طويل (أكثر من 10 حرف)")
+    .refine((val) => /^\d+$/.test(val), {
+      message: "يجب أن يتكون الرمز البريدي من أرقام فقط",
+    }),
+  address: z.string().trim().nonempty("عنوان الفرع إجباري"),
+});
+
+export type NewAgentDepartmentSchemaType = z.infer<
+  typeof newAgentDepartmentSchema
 >;
