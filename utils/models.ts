@@ -15,6 +15,27 @@ export type Currency = {
   updated_by: string | null;
 };
 
+export enum DepartmentRole {
+  MANAGER = "MANAGER",
+  STAFF = "STAFF",
+  TECHNICIAN = "TECHNICIAN",
+  SUPERVISOR = "SUPERVISOR",
+}
+
+export type AgentDepartment = {
+  id: string;
+  name: string;
+  country: string;
+  country_ar: string;
+  country_code: string;
+  city: string;
+  zipcode: string;
+  address: string;
+  created_at: number | string | null;
+  updated_at: number | string | null;
+  updated_by: string | null;
+};
+
 export type UserRolesView = {
   id: string;
   roles: string[];
@@ -28,10 +49,11 @@ export type UserProfile = {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
-  created_by?: string | UserProfile;
+  created_by?: string | UserProfile; // either user profile id or the user profile object
   created_at: string;
   profile_picture?: string | null;
   currency?: number | null;
+  department?: string | AgentDepartment; // either the department id or the department object
 };
 
 export type Transaction = {
@@ -103,8 +125,8 @@ export type Report = {
   agent_id: string; // UUID
   title: string; // Text
   description?: string; // Text (optional)
-  from_date: string | number ; // Date
-  to_date: string | number ; // Date
+  from_date: string | number; // Date
+  to_date: string | number; // Date
   total_transactions: number; // Integer
   confirmed_transactions: number; // Integer
   pending_transactions: number; // Integer
