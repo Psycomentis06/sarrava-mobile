@@ -53,7 +53,9 @@ export type UserProfile = {
   created_at: string;
   profile_picture?: string | null;
   currency?: number | null;
-  department?: string | AgentDepartment; // either the department id or the department object
+  department?: AgentDepartment;
+  department_id?: string;
+  department_role?: DepartmentRole
 };
 
 export type Transaction = {
