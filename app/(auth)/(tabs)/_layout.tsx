@@ -113,6 +113,14 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="department"
+        options={{
+          title: "الفروع",
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
         name="home.old"
         options={{
           title: "Home old screen",

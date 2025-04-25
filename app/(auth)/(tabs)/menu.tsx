@@ -66,6 +66,21 @@ export default function MoreOptions() {
           </Pressable>
         </Link>
 
+        <Link href="/(auth)/(tabs)/department" asChild style={{display: !isLoading && hasAdminPermission ? 'flex' : 'none'}}>
+          <Pressable
+            style={styles.menuItem}
+            android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+          >
+            <IconSymbol
+              size={24}
+              name="building"
+              color={text}
+              style={{ marginHorizontal: 5 }}
+            />
+            <ThemedText style={{ marginLeft: 5 }}>الفروع</ThemedText>
+          </Pressable>
+        </Link>
+
         <Link href="/(auth)/(tabs)/currency_rates" asChild style={{display: !isLoading && hasAdminPermission ? 'flex' : 'none'}}>
           <Pressable
             style={styles.menuItem}
