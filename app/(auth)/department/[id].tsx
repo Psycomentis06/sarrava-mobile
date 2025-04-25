@@ -5,7 +5,7 @@ import { useAgents } from "@/hooks/useAgents";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import {
   getArabicDepartmentRole,
-  getDepartmentRoleIcon
+  getDepartmentRoleIcon,
 } from "@/services/departments";
 import { AgentDepartment, DepartmentRole, UserProfile } from "@/utils/models";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -25,11 +25,81 @@ const renderScene = SceneMap({
 });
 
 function DetailsScene() {
-  const { id } = useLocalSearchParams();
-  useEffect(() => {
-    console.log("details: ", id);
-  }, []);
-  return <ThemedText>Details</ThemedText>;
+  const { id, dep } = useLocalSearchParams();
+  const depDetails = JSON.parse(dep as string) as AgentDepartment;
+  return (
+    <ThemedView style={{ flex: 1, gap: 20, padding: 10 }}>
+      <View
+        style={{ flexDirection: "row", alignItems: "center", marginTop: 10 }}
+      >
+        <ThemedText style={{ width: "30%", opacity: 0.6 }} weight="bold">
+          إسم الفرع :{" "}
+        </ThemedText>
+        <ThemedText style={{ width: "70%" }} type="md">
+          {depDetails.name}
+        </ThemedText>
+      </View>
+
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <ThemedText style={{ width: "30%", opacity: 0.6 }} weight="bold">
+          البلد :{" "}
+        </ThemedText>
+        <ThemedText
+          style={{ width: "70%" }}
+          type="md"
+        >{`${depDetails.country_ar} (${depDetails.country_code})`}</ThemedText>
+      </View>
+
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <ThemedText style={{ width: "30%", opacity: 0.6 }} weight="bold">
+          المدينة :{" "}
+        </ThemedText>
+        <ThemedText style={{ width: "70%" }} type="md">
+          {depDetails.city}
+        </ThemedText>
+      </View>
+
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <ThemedText style={{ width: "30%", opacity: 0.6 }} weight="bold">
+          الرّمز البريدي :{" "}
+        </ThemedText>
+        <ThemedText style={{ width: "70%" }} type="md">
+          {depDetails.zipcode}
+        </ThemedText>
+      </View>
+
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <ThemedText style={{ width: "30%", opacity: 0.6 }} weight="bold">
+          العنوان :{" "}
+        </ThemedText>
+        <ThemedText style={{ width: "70%" }} type="md">
+          {depDetails.address}
+        </ThemedText>
+      </View>
+
+      {depDetails.created_at && (
+        <View
+          style={{ flexDirection: "row", alignItems: "center", opacity: 0.6 }}
+        >
+          <ThemedText>تمّ إضافة الفرع بتاريخ : </ThemedText>
+          <ThemedText>
+            {new Date(depDetails.created_at).toLocaleString()}
+          </ThemedText>
+        </View>
+      )}
+
+      {!depDetails?.updated_at ? null : (
+        <ThemedText type="sm" style={{ opacity: 0.6, marginTop: 10 }}>
+          {`أخر تحديث بتاريخ ${new Date(
+            depDetails.updated_at
+          ).toLocaleDateString()} على السّاعة ${new Date(
+            depDetails.updated_at
+          ).toLocaleTimeString()}`}
+          {!depDetails?.updated_by ? null : ` بواسطة ${depDetails.updated_by}`}
+        </ThemedText>
+      )}
+    </ThemedView>
+  );
 }
 
 function AgentsScene() {
@@ -122,7 +192,14 @@ function AgentsScene() {
                     <ThemedText type="md" style={{ opacity: 0.8 }}>
                       {item.email}
                     </ThemedText>
-                    <View style={{flexDirection: 'row', gap: 5, opacity: 0.7, alignItems: 'center'}}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 5,
+                        opacity: 0.7,
+                        alignItems: "center",
+                      }}
+                    >
                       {item.department || item.department_id ? (
                         <RoleIcon />
                       ) : (
