@@ -1,24 +1,20 @@
 // This beautiful illustration was generated using https://www.recraft.ai/
-import * as React from "react"
+import ArReshaper from "@/lib/ar_reshaper";
+import * as React from "react";
 import Svg, {
-    Defs,
-    LinearGradient,
-    Path,
-    Stop,
-    SvgProps,
-    Text,
-    TSpan,
-} from "react-native-svg"
+  Defs,
+  LinearGradient,
+  Path,
+  Stop,
+  SvgProps,
+  Text,
+  TSpan,
+} from "react-native-svg";
 
-type ItemsNotFoundProps = {}
+type ItemsNotFoundProps = { domain: string } & SvgProps;
 
-const ItemsNotFound= (props: SvgProps) => (
-  <Svg
-    width={1024}
-    height={1024}
-    viewBox="0 0 270.933 270.933"
-    {...props}
-  >
+const ItemsNotFound = ({ domain = "بيانات", ...rest }: ItemsNotFoundProps) => (
+  <Svg width={1024} height={1024} viewBox="0 0 270.933 270.933" {...rest}>
     <Defs>
       <LinearGradient
         id="a"
@@ -883,32 +879,32 @@ const ItemsNotFound= (props: SvgProps) => (
       fill="#0b455f"
       d="m51.78 234.43.519-.11c-.092 1.11-.191 2.22-.18 3.334.009.728.137 1.548.086 2.265-.018.253-.1.522-.207.751l-.186-.03c.221-1.04-.088-1.98-.405-2.964l.26-2.884z"
     />
-    <Text
-      transform="translate(-42.788 2.804) scale(.26458)"
-    >
+    <Text transform="translate(-10 2.804) scale(.26458)">
       <TSpan x={519.641} y={350.465}>
         <TSpan
-        fill="#0e5472ff"
-        color="#0e5472ff"
-        fillOpacity="1"
-        fontSize="48"
-        fontFamily="Sans-Serif"
-        fontWeight="bold"
+          fill="#0e5472ff"
+          color="#0e5472ff"
+          fillOpacity="1"
+          fontSize="48"
+          fontFamily="Sans-Serif"
+          fontWeight="bold"
         >
-          No items
+          {/* No items */}
+          {`${ArReshaper.convertArabic(domain)}`}
         </TSpan>
         <TSpan
-        translateX="10"
-        fill="#0e5472ff"
-        color="#0e5472ff"
-        fillOpacity="1"
-        fontSize="40"
-        fontFamily="Sans-Serif"
+          translateX="10"
+          fill="#0e5472ff"
+          color="#0e5472ff"
+          fillOpacity="1"
+          fontSize="40"
+          fontFamily="Sans-Serif"
         >
-            Found
+          {/* Found */}
+          {`${ArReshaper.convertArabic("لايوجد")}`}
         </TSpan>
       </TSpan>
     </Text>
   </Svg>
-)
-export default ItemsNotFound
+);
+export default ItemsNotFound;
