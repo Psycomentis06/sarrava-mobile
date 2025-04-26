@@ -5,53 +5,31 @@ import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
+import EmptyState from "@/components/ui/EmptyState";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
+import { useDepartments } from "@/hooks/useDepartments";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { supabase } from "@/lib/supabase";
-import { AgentDepartment } from "@/utils/models";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, FlatList, Platform, Pressable, View } from "react-native";
+import { FlatList, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function DepartmentScreen() {
   const insets = useSafeAreaInsets();
   const palette = useThemePalette();
   const [searchInput, setSearchInput] = useState<string>("");
-  const [departments, setDepartments] = useState<AgentDepartment[]>([]);
+  const [isReloading, setIsReloading] = useState<boolean>(false);
 
-  const getDeps = async () => {
-    const query = supabase
-      .from("departments")
-      .select()
-      .order("created_at", { ascending: false });
-
-    var searchValue = searchInput.trim().toLowerCase();
-    if (searchValue && searchValue.length > 0) {
-      query.or(
-        `name.ilike.%${searchValue}%,` +
-          `country.ilike.%${searchValue}%,` +
-          `country_ar.ilike.%${searchValue}%,` +
-          `country_code.ilike.%${searchValue}%,` +
-          `city.ilike.%${searchValue}%,` +
-          `zipcode.ilike.%${searchValue}%,` +
-          `address.ilike.%${searchValue}%`
-      );
-    }
-    const { data, error } = await query;
-    if (error) {
-      console.error(error);
-      Alert.alert("error");
-      return;
-    }
-
-    if (data) {
-      setDepartments(data);
-    }
-  };
+  const {
+    searchResults: departments,
+    search,
+    reload,
+    isLoading: isDepartmentsLoading,
+  } = useDepartments();
 
   useEffect(() => {
-    getDeps();
+    search("");
   }, []);
 
   return (
@@ -76,18 +54,18 @@ export default function DepartmentScreen() {
           }}
         >
           <ThemedTextInput
-            placeholder="بحث عن تقرير"
+            placeholder="بحث عن قسم"
             containerStyle={{ width: "75%" }}
             returnKeyType="search"
             value={searchInput}
             onChangeText={setSearchInput}
-            onEndEditing={() => console.log("search")}
+            onEndEditing={() => search(searchInput)}
           />
 
           {Platform.OS === "web" ? (
             <ThemedButton
               style={{ width: 50 }}
-              onPress={() => console.log("Search")}
+              onPress={() => search(searchInput)}
             >
               <ThemedText>بحث</ThemedText>
             </ThemedButton>
@@ -109,61 +87,97 @@ export default function DepartmentScreen() {
         </View>
       </View>
 
-      <FlatList
-        data={departments}
-        keyExtractor={(i) => i.id}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
-        style={{ paddingHorizontal: 10 }}
-        renderItem={({ item }) => (
-          <View style={{ borderRadius: 10, overflow: "hidden" }}>
-            <Pressable
-              style={{
-                backgroundColor: palette.tint,
-                marginVertical: 5,
-                paddingVertical: 10,
-                paddingHorizontal: 10,
-                borderRadius: 10,
-                overflow: "hidden",
-                gap: 10,
-              }}
-              android_ripple={{
-                color: "rgba(0,0,0,0.26)",
-                foreground: true,
-                borderless: false,
-              }}
-              onPress={() =>
-                router.navigate({
-                  pathname: "/(auth)/department/[id]",
-                  params: { id: item.id, dep: JSON.stringify(item) },
-                })
-              }
-            >
-              <View
-                style={{ flexDirection: "row", gap: 10, alignItems: "center" }}
+      {isDepartmentsLoading ? (
+        <LoadingOverlay text="تحميل بيانات الأقسام..." />
+      ) : (
+        <FlatList
+          data={departments}
+          keyExtractor={(i) => i.id}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+          style={{ paddingHorizontal: 10 }}
+          ListEmptyComponent={() => (
+            <EmptyState
+              title="لا توجد فروع"
+              description="لم يتم العثور على أي فروع، حاول إضافة فرع جديد أو تعديل البحث."
+              iconName="building"
+            />
+          )}
+          refreshing={isReloading}
+          onRefresh={async () => {
+            setIsReloading(true);
+            try {
+              await reload();
+            } catch (error) {
+              console.error(error);
+            } finally {
+              setIsReloading(false);
+            }
+          }}
+          renderItem={({ item }) => (
+            <View style={{ borderRadius: 10, overflow: "hidden" }}>
+              <Pressable
+                style={{
+                  backgroundColor: palette.tint,
+                  marginVertical: 5,
+                  paddingVertical: 10,
+                  paddingHorizontal: 10,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  gap: 10,
+                }}
+                android_ripple={{
+                  color: "rgba(0,0,0,0.26)",
+                  foreground: true,
+                  borderless: false,
+                }}
+                onPress={() =>
+                  router.navigate({
+                    pathname: "/(auth)/department/[id]",
+                    params: { id: item.id, dep: JSON.stringify(item) },
+                  })
+                }
               >
-                <Building opacity={0.6} />
-                <ThemedText type="l" weight="medium">
-                  {item.name}
-                </ThemedText>
-              </View>
-              <View
-                style={{ flexDirection: "row", gap: 10, alignItems: "center" }}
-              >
-                <LocationPin opacity={0.6} />
-                <ThemedText>
-                  {item.country_ar} | {item.city} | {item.zipcode}
-                </ThemedText>
-              </View>
-              <View
-                style={{ flexDirection: "row", gap: 10, alignItems: "center" }}
-              >
-                <Destination opacity={0.6} />
-                <ThemedText style={{ opacity: 0.6 }}>{item.address}</ThemedText>
-              </View>
-            </Pressable>
-          </View>
-        )}
-      />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  <Building opacity={0.6} />
+                  <ThemedText type="l" weight="medium">
+                    {item.name}
+                  </ThemedText>
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  <LocationPin opacity={0.6} />
+                  <ThemedText>
+                    {item.country_ar} | {item.city} | {item.zipcode}
+                  </ThemedText>
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  <Destination opacity={0.6} />
+                  <ThemedText style={{ opacity: 0.6 }}>
+                    {item.address}
+                  </ThemedText>
+                </View>
+              </Pressable>
+            </View>
+          )}
+        />
+      )}
     </ThemedView>
   );
 }
