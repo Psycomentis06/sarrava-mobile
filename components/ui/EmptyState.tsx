@@ -29,11 +29,11 @@ export default function EmptyState({
         <IconSymbol
           name={iconName}
           size={64}
-          color={palette.tint}
+          color={palette.muted}
           style={{ marginBottom: 20 }}
         />
       )}
-      <ThemedText type="xl" weight="bold" style={{ marginBottom: 10 }}>
+      <ThemedText type="xl" weight="bold" style={{ marginBottom: 10, color: palette.muted }}>
         {title}
       </ThemedText>
       <ThemedText
