@@ -1,6 +1,7 @@
 import Person from "@/components/svg/Person";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useAgents } from "@/hooks/useAgents";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import {
@@ -17,16 +18,9 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { SceneMap, TabBar, TabView } from "react-native-tab-view";
+import { TabBar, TabView } from "react-native-tab-view";
 
-const renderScene = SceneMap({
-  details: DetailsScene,
-  agents: AgentsScene,
-});
-
-function DetailsScene() {
-  const { id, dep } = useLocalSearchParams();
-  const depDetails = JSON.parse(dep as string) as AgentDepartment;
+function DetailsScene({ depDetails }: { depDetails: AgentDepartment }) {
   return (
     <ThemedView style={{ flex: 1, gap: 20, padding: 10 }}>
       <View
@@ -102,27 +96,9 @@ function DetailsScene() {
   );
 }
 
-function AgentsScene() {
-  const { id } = useLocalSearchParams();
+function AgentsScene({ depAgents }: { depAgents: UserProfile[] }) {
   const router = useRouter();
   const palette = useThemePalette();
-  const { agents } = useAgents();
-  const [depAgents, setDepAgents] = useState<UserProfile[]>([]);
-  const getDepAgents = useMemo(() => {
-    return agents.filter((a) => {
-      if (a.department_id) {
-        return a.department_id === id;
-      }
-      if (a.department && a.department.id) {
-        return a.department.id === id;
-      }
-      return false;
-    });
-  }, [id, agents]);
-
-  useEffect(() => {
-    setDepAgents(getDepAgents);
-  }, [id, agents]);
   return (
     <ThemedView style={{ flex: 1, padding: 20 }}>
       <FlatList
@@ -228,25 +204,23 @@ export default function DepartmentDetailsScreen() {
   const { id, dep } = useLocalSearchParams();
   const depDetails = JSON.parse(dep as string) as AgentDepartment;
   const layout = useWindowDimensions();
-  const [tabIndex, setTabIndex] = useState<number>(0);
   const palette = useThemePalette();
+  const [tabIndex, setTabIndex] = useState<number>(0);
+
   const { agents } = useAgents();
+
+  const departmentAgents = useMemo(() => {
+    return agents.filter((a) => {
+      if (a.department_id) return a.department_id === depDetails.id;
+      if (a.department?.id) return a.department.id === depDetails.id;
+      return false;
+    });
+  }, [agents, depDetails.id]);
+
   const [routes, setRoutes] = useState([
     { key: "details", title: "معلومات الفرع" },
     { key: "agents", title: `الوكلاء (0)` },
   ]);
-
-  const departmentAgents = useMemo(() => {
-    return agents.filter((a) => {
-      if (a.department_id) {
-        return a.department_id === depDetails.id;
-      }
-      if (a.department && a.department.id) {
-        return a.department.id === depDetails.id;
-      }
-      return false;
-    });
-  }, [agents, depDetails.id]);
 
   useEffect(() => {
     setRoutes([
@@ -254,6 +228,17 @@ export default function DepartmentDetailsScreen() {
       { key: "agents", title: `الوكلاء (${departmentAgents.length})` },
     ]);
   }, [departmentAgents.length]);
+
+  const renderScene = ({ route }: { route: { key: string } }) => {
+    switch (route.key) {
+      case "details":
+        return <DetailsScene depDetails={depDetails} />;
+      case "agents":
+        return <AgentsScene depAgents={departmentAgents} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -263,6 +248,8 @@ export default function DepartmentDetailsScreen() {
         renderScene={renderScene}
         onIndexChange={setTabIndex}
         initialLayout={{ width: layout.width }}
+        lazy={true}
+        renderLazyPlaceholder={() => (<LoadingOverlay />)}
         renderTabBar={(props) => (
           <TabBar {...props} style={{ backgroundColor: palette.accent }} />
         )}
