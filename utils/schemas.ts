@@ -80,29 +80,42 @@ export type NewTransactionPriceSchemaType = z.infer<
 
 export type NewTransactionType = z.infer<typeof newTransactionSchema>;
 
-export const newAgentSchema = z.object({
-  firstname: z
-    .string()
-    .nonempty({ message: "الاسم مطلوب" })
-    .min(2, { message: "الاسم يجب أن يتكون من حرفين على الأقل." }),
-  lastname: z
-    .string()
-    .nonempty({ message: "اللّقب مطلوب" })
-    .min(2, { message: "يجب أن يتكون اللقب من حرفين على الأقل." }),
-  email: z
-    .string()
-    .nonempty({ message: "البريد الألكتروني مطلوب" })
-    .email({ message: "عنوان البريد الإلكتروني غير صالح." }),
-  phone: z
-    .string()
-    .nonempty({ message: "رقم الهاتف مطلوب" })
-    .min(8, { message: "يجب أن يكون رقم الهاتف مكونًا من 8 أرقام على الأقل" }),
-  address: z.string().nonempty({ message: "العنوان مطلوب" }),
-  password: z
-    .string()
-    .nonempty({ message: "كلمة السرّ مطلوبة" })
-    .min(2, "كلمة السر يجب أن تحتوي على حرفين على الأقل"),
-});
+export const newAgentSchema = z
+  .object({
+    firstname: z
+      .string()
+      .nonempty({ message: "الاسم مطلوب" })
+      .min(2, { message: "الاسم يجب أن يتكون من حرفين على الأقل." }),
+    lastname: z
+      .string()
+      .nonempty({ message: "اللّقب مطلوب" })
+      .min(2, { message: "يجب أن يتكون اللقب من حرفين على الأقل." }),
+    email: z
+      .string()
+      .nonempty({ message: "البريد الألكتروني مطلوب" })
+      .email({ message: "عنوان البريد الإلكتروني غير صالح." }),
+    phone: z
+      .string()
+      .nonempty({ message: "رقم الهاتف مطلوب" })
+      .min(8, {
+        message: "يجب أن يكون رقم الهاتف مكونًا من 8 أرقام على الأقل",
+      }),
+    address: z.string().nonempty({ message: "العنوان مطلوب" }),
+    password: z
+      .string()
+      .nonempty({ message: "كلمة السرّ مطلوبة" })
+      .min(2, "كلمة السر يجب أن تحتوي على حرفين على الأقل"),
+    department: z
+      .string()
+      .uuid({ message: "لايمكن قبول بيانات الفرع" })
+      .nullable()
+      .optional(),
+    department_role: z.string().nullable(),
+  })
+  .refine((data) => !(data.department !== null && !data.department_role), {
+    message: "دور الفرع مطلوب عندما يتم تحديد فرع",
+    path: ["department_role"],
+  });
 
 export type NewAgentType = z.infer<typeof newAgentSchema>;
 

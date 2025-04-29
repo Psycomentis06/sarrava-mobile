@@ -3,18 +3,34 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useAgents } from "@/hooks/useAgents";
+import { useDepartments } from "@/hooks/useDepartments";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import { getArabicDepartmentRole } from "@/services/departments";
+import { DepartmentRole } from "@/utils/models";
 import { newAgentSchema, NewAgentType } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Picker } from "@react-native-picker/picker";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Alert, Image, Pressable, ScrollView, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native";
+
+const NULL_DEPARTMENT_VALUE = "NULL_DEPARTMENT_SPECIAL_VALUE";
 
 export default function AddAgentScreen() {
   const palette = useThemePalette();
   const router = useRouter();
+  const { add: addAgent, isAddAgentLoading } = useAgents();
+  const { departments } = useDepartments();
   const [selectedImage, setSelectedImage] =
     useState<ImagePicker.ImagePickerAsset | null>(null);
   const pickImage = async () => {
@@ -30,114 +46,43 @@ export default function AddAgentScreen() {
       setSelectedImage(result.assets[0]);
     }
   };
-  const { formState, control, handleSubmit, getValues } = useForm<NewAgentType>(
-    {
-      resolver: zodResolver(newAgentSchema),
-      defaultValues: {
-        firstname: "",
-        lastname: "",
-        email: "",
-        address: "",
-        phone: "",
-        password: "",
-      },
-    }
-  );
+  const { formState, control, handleSubmit, watch } = useForm<NewAgentType>({
+    resolver: zodResolver(newAgentSchema),
+    defaultValues: {
+      firstname: "",
+      lastname: "",
+      email: "",
+      address: "",
+      phone: "",
+      password: "",
+      department: "",
+      department_role: null,
+    },
+  });
+  const $agentDepartment = watch("department");
   const onSubmit = async (data: NewAgentType) => {
-    Alert.alert(
-      "مستحيل",
-      "لايمكن أضافة وكيل جديد في الوقت الرّاهن. لم تكتمل هذه الخاصيّة بعد"
-    );
-    return;
-    // try {
-    // 1. Check if mail exists
-    /*
-      const { data: checkMailData, error: checkMailErr } = await supabase
-        .from("user_profiles")
-        .select()
-        .eq("email", getValues().email);
-      if (!checkMailErr) {
-        Alert.alert("خطأ", "فشل التحقق من البريد الألكتروني");
-        console.error(checkMailErr)
-        return;
+    try {
+      const result = await addAgent(data, selectedImage);
+      console.log("Agent added successfully:", result);
+      router.replace('/(auth)/(tabs)/agent')
+      Alert.alert("نجاح", "تمت إضافة الوكيل بنجاح");
+    } catch (err) {
+      console.error("Error in onSubmit:", err);
+
+      if (typeof err === "object" && err !== null && "error_ar" in err) {
+        Alert.alert("فشل العمليّة", err.error_ar as string);
+      } else if (err instanceof Error) {
+        Alert.alert(
+          "فشل العمليّة",
+          err.message || "لم تتمّ إضافة الوكيل بسبب خطأ تقني"
+        );
+      } else {
+        Alert.alert(
+          "فشل العمليّة",
+          "لم تتمّ إضافة الوكيل بسبب خطأ تقني غير متوقّع"
+        );
       }
-      console.log(checkMailData);
-      if (true) {
-        return;
-      }*/
-    //   // 2. Signup user in supabase
-    //   const { data: signUpData, error: signUpErr } = await supabase.auth.signUp(
-    //     { email: getValues().email, password: getValues().password }
-    //   );
-    //   if (signUpErr) {
-    //     Alert.alert("خطأ", "فشل أضافة وكيل جديد");
-    //     console.error(signUpErr);
-    //     return;
-    //   }
-    //   // 3. Save image in supabase with newly created user id as the image name
-    //   if (!signUpData.user) {
-    //     Alert.alert(
-    //       "مشكل",
-    //       "حدث خلل ما مأدى لعدم أكمال العملية. تم أضافة الوكيل مما يكنه من تسجيل الدخول لاكن لم تتم أضافة الصورة أو المعلومات الخاصة بالوكيل. يمكنك الدخول بحساب الوكيل لتحدث البيانات"
-    //     );
-    //     return;
-    //   }
-    //   let imageUrl = null;
-    //   if (selectedImage) {
-    //     const imgBase64 = await Filesystem.readAsStringAsync(
-    //       selectedImage.uri,
-    //       { encoding: "base64" }
-    //     );
-    //     const { data: uploadImgData, error: uploadImgErr } =
-    //       await supabase.storage
-    //         .from("user-profiles")
-    //         .upload(signUpData.user.id, decode(imgBase64), {
-    //           upsert: true,
-    //           contentType: selectedImage.mimeType,
-    //         });
-
-    //     if (uploadImgErr) {
-    //       console.error("Failed to upload image", uploadImgErr);
-    //     }
-
-    //     imageUrl = uploadImgData?.fullPath;
-    //   }
-
-    //   // 4. Save user profile data
-    //   const { data: insertProfileData, error: insertProfileErr } =
-    //     await supabase
-    //       .from("user_profiles")
-    //       .insert({
-    //         user_id: signUpData.user?.id,
-    //         firstname: data.firstname,
-    //         lastname: data.lastname,
-    //         email: data.email,
-    //         phone: data.phone,
-    //         address: data.address,
-    //         profile_picture: imageUrl,
-    //       })
-    //       .select("id")
-    //       .single();
-
-    //   if (insertProfileErr) {
-    //     Alert.alert("فشل", "حدث خطأ أثناء تسجيل المعطيات التابعة للوكيل");
-    //     console.error(insertProfileErr);
-    //     return;
-    //   }
-
-    //   console.log("New agent profile: ", insertProfileData);
-    //   const newAgentProfile = insertProfileData as UserProfile;
-    //   router.replace({
-    //     pathname: "/(auth)/(tabs)/agent",
-    //     params: { id: newAgentProfile.id },
-    //   });
-    // } catch (error) {
-    //   console.error("Error in onSubmit:", error);
-    //   Alert.alert(
-    //     "خطأ",
-    //     "حدث خطأ أثناء إضافة الوكيل الجديد. يرجى المحاولة مرة أخرى."
-    //   );
-    // }
+    }
   };
   return (
     <>
@@ -278,12 +223,130 @@ export default function AddAgentScreen() {
               )}
             />
 
-            <ThemedButton onPress={handleSubmit(onSubmit)}>
-              <ThemedText
-                style={{ textAlign: "center", color: palette.background }}
-              >
-                أرسل
-              </ThemedText>
+            <Controller
+              control={control}
+              name="department"
+              render={({ field: { value, onChange, onBlur }, fieldState }) => (
+                <View>
+                  <View
+                    style={{
+                      borderColor: fieldState.error?.message
+                        ? palette.error
+                        : "rgba(0,0,0,0.2)",
+                      borderWidth: 1,
+                      borderRadius: 15,
+                    }}
+                  >
+                    <Picker
+                      selectedValue={
+                        value === null ? NULL_DEPARTMENT_VALUE : value
+                      }
+                      onValueChange={(e) => {
+                        onChange(e === NULL_DEPARTMENT_VALUE ? null : e);
+                      }}
+                      onBlur={onBlur}
+                    >
+                      <Picker.Item
+                        label="إختار فرع (إختياري)..."
+                        value={NULL_DEPARTMENT_VALUE}
+                        color={palette.muted}
+                      />
+                      {departments &&
+                        departments.map((d) => (
+                          <Picker.Item
+                            key={d.id}
+                            label={`${d.name} | ${d.country_ar} | ${d.city} | ${d.zipcode}`}
+                            value={d.id}
+                          />
+                        ))}
+                    </Picker>
+                  </View>
+                  {fieldState.error && (
+                    <ThemedText type="sm" style={{ color: palette.error }}>
+                      {fieldState.error?.message}
+                    </ThemedText>
+                  )}
+                </View>
+              )}
+            />
+
+            {$agentDepartment && (
+              <Controller
+                control={control}
+                name="department_role"
+                render={({
+                  field: { value, onChange, onBlur },
+                  fieldState,
+                }) => (
+                  <View>
+                    <View
+                      style={{
+                        borderColor: fieldState.error?.message
+                          ? palette.error
+                          : "rgba(0,0,0,0.2)",
+                        borderWidth: 1,
+                        borderRadius: 15,
+                      }}
+                    >
+                      <Picker
+                        mode="dropdown"
+                        selectedValue={value}
+                        onValueChange={onChange}
+                        onBlur={onBlur}
+                      >
+                        <Picker.Item
+                          label="إختار الوظيفة..."
+                          value={null}
+                          enabled={false}
+                          color="rgb(95, 95, 95)"
+                        />
+                        <Picker.Item
+                          label={getArabicDepartmentRole(
+                            DepartmentRole.MANAGER
+                          )}
+                          value={DepartmentRole.MANAGER}
+                        />
+                        <Picker.Item
+                          label={getArabicDepartmentRole(
+                            DepartmentRole.SUPERVISOR
+                          )}
+                          value={DepartmentRole.SUPERVISOR}
+                        />
+                        <Picker.Item
+                          label={getArabicDepartmentRole(DepartmentRole.STAFF)}
+                          value={DepartmentRole.STAFF}
+                        />
+                        <Picker.Item
+                          label={getArabicDepartmentRole(
+                            DepartmentRole.TECHNICIAN
+                          )}
+                          value={DepartmentRole.TECHNICIAN}
+                        />
+                      </Picker>
+                      {fieldState.error && (
+                        <ThemedText type="sm" style={{ color: palette.error }}>
+                          {fieldState.error?.message}
+                        </ThemedText>
+                      )}
+                    </View>
+                  </View>
+                )}
+              />
+            )}
+            <ThemedButton
+              style={{ opacity: isAddAgentLoading ? 0.6 : 1 }}
+              onPress={handleSubmit(onSubmit)}
+              disabled={isAddAgentLoading}
+            >
+              {isAddAgentLoading ? (
+                <ActivityIndicator color={palette.accent} size={25} />
+              ) : (
+                <ThemedText
+                  style={{ textAlign: "center", color: palette.background }}
+                >
+                  أرسل
+                </ThemedText>
+              )}
             </ThemedButton>
           </View>
         </ThemedView>
