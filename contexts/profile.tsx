@@ -2,6 +2,7 @@ import { UseSupabaseSession } from "@/hooks/useSupabaseSession";
 import { supabase } from "@/lib/supabase";
 import { UserProfile } from "@/utils/models";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNetInfo } from "@react-native-community/netinfo";
 import React, {
   createContext,
   useCallback,
@@ -12,7 +13,6 @@ import React, {
   useState,
 } from "react";
 
-// Define the context shape
 type UserProfileContextType = {
   profile: UserProfile | null;
   isLoading: boolean;
@@ -25,42 +25,46 @@ const UserProfileContext = createContext<UserProfileContextType | undefined>(
   undefined
 );
 
+const CACHE_VERSION = 0;
+
 export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [isSessionLoading, session] = UseSupabaseSession();
-  const [isProfileLoading, setIsProfileLoading] = useState<boolean>(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const { isInternetReachable } = useNetInfo();
   const isFetchingProfile = useRef(false);
+  const hasSyncedOfflineUpdates = useRef(false);
+
+  const getCacheKeys = (userId: string) => ({
+    profile: `offline:user:${userId}:profile:${CACHE_VERSION}`,
+    accessToken: `offline:user:${userId}:token:${CACHE_VERSION}`,
+    updateQueue: `offline:user:${userId}:profile:updates:queue`,
+  });
 
   const clearProfileCache = useCallback(async (userId: string) => {
+    const keys = getCacheKeys(userId);
     await AsyncStorage.multiRemove([
-      `user:${userId}:profile`,
-      `user:${userId}:access_token`,
+      keys.profile,
+      keys.accessToken,
+      keys.updateQueue,
     ]);
   }, []);
 
   const fetchUserProfile = useCallback(
     async (userId: string, accessToken: string) => {
-      if (!userId || isFetchingProfile.current) return;
-      isFetchingProfile.current = true;
+      const keys = getCacheKeys(userId);
       setIsProfileLoading(true);
       setError(null);
 
       try {
-        const [cachedProfileJson, cachedAccessToken] =
-          await AsyncStorage.multiGet([
-            `user:${userId}:profile`,
-            `user:${userId}:access_token`,
-          ]);
-
-        if (cachedAccessToken[1] !== accessToken) {
-          await clearProfileCache(userId);
-        }
-
-        if (cachedProfileJson[1]) {
-          setProfile(JSON.parse(cachedProfileJson[1]));
+        if (isInternetReachable === false) {
+          const cachedJson = await AsyncStorage.getItem(keys.profile);
+          if (cachedJson) {
+            setProfile(JSON.parse(cachedJson));
+          }
           return;
         }
 
@@ -72,75 +76,134 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (error) throw new Error(error.message);
         if (data) {
-          console.log("Profile loaded at " + new Date())
           await AsyncStorage.multiSet([
-            [`user:${userId}:profile`, JSON.stringify(data)],
-            [`user:${userId}:access_token`, accessToken],
+            [keys.profile, JSON.stringify(data)],
+            [keys.accessToken, accessToken],
           ]);
           setProfile(data);
         }
-      } catch (catchError) {
+      } catch (err) {
         setError(
-          catchError instanceof Error
-            ? catchError
+          err instanceof Error
+            ? err
             : new Error("Unknown error fetching profile")
         );
       } finally {
         setIsProfileLoading(false);
-        isFetchingProfile.current = false;
       }
     },
-    [clearProfileCache]
+    [isInternetReachable]
+  );
+
+  const applyOfflineUpdateQueue = useCallback(
+    async (userId: string) => {
+      const keys = getCacheKeys(userId);
+      if (isInternetReachable === false || hasSyncedOfflineUpdates.current)
+        return;
+
+      try {
+        const queueJson = await AsyncStorage.getItem(keys.updateQueue);
+        if (!queueJson) return;
+
+        const updates: Partial<UserProfile>[] = JSON.parse(queueJson);
+        for (const update of updates) {
+          await supabase
+            .from("user_profiles")
+            .update(update)
+            .eq("user_id", userId);
+        }
+        await AsyncStorage.removeItem(keys.updateQueue);
+        hasSyncedOfflineUpdates.current = true;
+      } catch (err) {
+        console.warn("Failed to apply offline profile update queue:", err);
+      }
+    },
+    [isInternetReachable]
   );
 
   const updateProfile = useCallback(
     async (updates: Partial<UserProfile>) => {
-      if (!session?.user.id) return null;
-      try {
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .update(updates)
-          .eq("user_id", session.user.id)
-          .select()
-          .single();
+      const userId = session?.user?.id;
+      if (!userId) return null;
 
-        if (error) throw new Error(error.message);
-        if (data) {
-          setProfile((prev) => (prev ? { ...prev, ...data } : data));
+      const keys = getCacheKeys(userId);
+
+      try {
+        if (isInternetReachable) {
+          const { data, error } = await supabase
+            .from("user_profiles")
+            .update(updates)
+            .eq("user_id", userId)
+            .select()
+            .single();
+
+          if (error) throw new Error(error.message);
+
+          if (data) {
+            setProfile((prev) => (prev ? { ...prev, ...data } : data));
+            await AsyncStorage.setItem(keys.profile, JSON.stringify(data));
+            return data;
+          }
+        } else if (isInternetReachable === false) {
+          // Offline: update local state and queue the update
+          const updatedProfile = { ...profile, ...updates } as UserProfile;
+          setProfile(updatedProfile);
           await AsyncStorage.setItem(
-            `user:${session.user.id}:profile`,
-            JSON.stringify(data)
+            keys.profile,
+            JSON.stringify(updatedProfile)
           );
-          return data;
+
+          const existingQueueJson = await AsyncStorage.getItem(
+            keys.updateQueue
+          );
+          const updateQueue: Partial<UserProfile>[] = existingQueueJson
+            ? JSON.parse(existingQueueJson)
+            : [];
+          updateQueue.push(updates);
+          await AsyncStorage.setItem(
+            keys.updateQueue,
+            JSON.stringify(updateQueue)
+          );
+          return updatedProfile;
         }
-      } catch (catchError) {
+      } catch (err) {
         setError(
-          catchError instanceof Error
-            ? catchError
+          err instanceof Error
+            ? err
             : new Error("Unknown error updating profile")
         );
       }
+
       return null;
     },
-    [session]
+    [session, profile, isInternetReachable]
   );
 
   const clearProfile = useCallback(async () => {
-    if (session?.user.id) {
-      await clearProfileCache(session.user.id);
-    }
+    const userId = session?.user?.id;
+    if (userId) await clearProfileCache(userId);
     setProfile(null);
     setError(null);
   }, [session, clearProfileCache]);
 
   useEffect(() => {
-    if (!isSessionLoading && session?.user.id) {
-      fetchUserProfile(session.user.id, session.access_token);
-    } else if (!session?.user.id) {
+    const userId = session?.user?.id;
+    const accessToken = session?.access_token;
+
+    if (!isSessionLoading && userId && accessToken) {
+      fetchUserProfile(userId, accessToken);
+    } else if (!userId) {
       setProfile(null);
       setIsProfileLoading(false);
     }
   }, [session, isSessionLoading, fetchUserProfile]);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (userId) {
+      applyOfflineUpdateQueue(userId);
+    }
+  }, [session?.user?.id, isInternetReachable]);
 
   const contextValue = useMemo(
     () => ({
