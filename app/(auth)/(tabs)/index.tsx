@@ -9,20 +9,13 @@ import ReportBox from "@/components/svg/ReportBox";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useUserProfile } from "@/contexts/profile";
-import { UseSupabaseSession } from "@/hooks/useSupabaseSession";
+import { useAgentAnalytics } from "@/hooks/useAnalytics";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { supabase } from "@/lib/supabase";
 import { hexToRgba } from "@/utils/colors";
 import { AgentTransactionsAnalytics } from "@/utils/models";
 import { Link, useNavigation } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Pressable,
-  StyleSheet,
-  Text,
-  View
-} from "react-native";
+import { useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type AnalyticsCardsComponentProps = {
@@ -40,9 +33,8 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
-  const [transactionsAnalytics, setTransactionsAnalytics] =
-    useState<AgentTransactionsAnalytics | null>(null);
-  const [isSessionLoading, session] = UseSupabaseSession();
+  const { analytics: transactionsAnalytics, isLoading: isAnalyticsLoading } =
+    useAgentAnalytics();
   const { profile } = useUserProfile();
 
   const headerHeight = scrollY.interpolate({
@@ -56,31 +48,6 @@ export default function HomeScreen() {
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
-
-  const getAnalytics = async () => {
-    const { data, error } = await supabase
-      .from("transactions_agent_stats_view")
-      .select()
-      .eq("agent_id", session?.user.id)
-      .single();
-
-    if (error) {
-      // Alert.alert("خطأ", "حدث خطأ أثناء تحميل بيانات الأحصائيات");
-      console.error(error)
-      return
-    }
-
-    if (data) {
-      console.log(data);
-      setTransactionsAnalytics(data);
-    }
-  };
-
-  useEffect(() => {
-    if (session) {
-      getAnalytics();
-    }
-  }, [isSessionLoading]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#3628B7" }}>
