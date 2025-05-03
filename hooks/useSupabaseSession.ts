@@ -75,6 +75,8 @@ export function UseSupabaseSession(): UseSupabaseSessionHook {
       };
     };
     init();
-  }, [isInternetReachable]);
+  }, [
+    // isInternetReachable : using this as a dependency will reload all the app state when going changing modes
+  ]);
   return [isLoading, session];
 }
