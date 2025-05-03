@@ -1,13 +1,20 @@
 import { supabase } from "@/lib/supabase";
 import { UserRolesView } from "@/utils/models";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNetInfo } from "@react-native-community/netinfo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UseSupabaseSession } from "./useSupabaseSession";
 
-export function useSupabaseHasPermissions(permissions: string[]): {isLoading: boolean, hasPermission: boolean} {
+const CACHE_VERSION = 0;
+
+export function useSupabaseHasPermissions(permissions: string[]): {
+  isLoading: boolean;
+  hasPermission: boolean;
+} {
   const [isSessionLoading, session] = UseSupabaseSession();
   const [isRolesLoading, setIsRolesLoading] = useState<boolean>(true);
   const [hasPermission, setHasPermission] = useState<boolean>(false);
+  const { isInternetReachable } = useNetInfo();
 
   const lastAccessTokenRef = useRef<string | null>(null);
 
@@ -21,84 +28,121 @@ export function useSupabaseHasPermissions(permissions: string[]): {isLoading: bo
     [permissions]
   );
 
-  const clearRolesCache = useCallback(async (userId: string) => {
-    const CACHE_KEY_ROLES = `user:${userId}:roles`;
-    const CACHE_KEY_ROLES_TS = `${CACHE_KEY_ROLES}:timestamp`;
-
-    await AsyncStorage.multiRemove([CACHE_KEY_ROLES, CACHE_KEY_ROLES_TS]);
+  const clearAllRoleCaches = useCallback(async (userId: string) => {
+    const keys = [
+      `user:${userId}:roles`,
+      `user:${userId}:access_token`,
+      `offline:permissions:${CACHE_VERSION}:user:${userId}:data`,
+    ];
+    await AsyncStorage.multiRemove(keys);
   }, []);
 
   const getUserRoles = useCallback(
-    async (userId: string, access_token: string) => {
+    async (userId: string, access_token: string, isOffline: boolean) => {
       setIsRolesLoading(true);
-      const CACHE_KEY_ROLES = `user:${userId}:roles`;
-      const CACHE_KEY_ACCESS_TOKEN = `user:${userId}:access_token`;
+
+      const ONLINE_CACHE_KEY_ROLES = `user:${userId}:roles`;
+      const ONLINE_CACHE_KEY_ACCESS_TOKEN = `user:${userId}:access_token`;
+      const OFFLINE_CACHE_KEY = `offline:permissions:${CACHE_VERSION}:user:${userId}:data`;
 
       try {
-        let cachedRolesJson = await AsyncStorage.getItem(CACHE_KEY_ROLES);
+        if (isOffline) {
+          // Offline: use offline cache only
+          const cachedOffline = await AsyncStorage.getItem(OFFLINE_CACHE_KEY);
+          if (cachedOffline) {
+            const parsed = JSON.parse(cachedOffline) as UserRolesView[];
+            checkPermissions(parsed);
+          } else {
+            console.warn("No offline permission cache found.");
+            setHasPermission(false);
+          }
+          return;
+        }
+
+        // Online: validate access token and use/fetch roles
         const cachedAccessToken = await AsyncStorage.getItem(
-          CACHE_KEY_ACCESS_TOKEN
+          ONLINE_CACHE_KEY_ACCESS_TOKEN
         );
-        if (cachedAccessToken != access_token) {
-          await clearRolesCache(userId);
+        let cachedRolesJson = await AsyncStorage.getItem(
+          ONLINE_CACHE_KEY_ROLES
+        );
+
+        if (cachedAccessToken !== access_token) {
+          // Invalidate online role cache if token changed
+          await AsyncStorage.multiRemove([
+            ONLINE_CACHE_KEY_ROLES,
+            ONLINE_CACHE_KEY_ACCESS_TOKEN,
+          ]);
           cachedRolesJson = null;
         }
+
         if (cachedRolesJson) {
           const cachedRoles = JSON.parse(cachedRolesJson) as UserRolesView[];
           checkPermissions(cachedRoles);
-          setIsRolesLoading(false);
           return;
         }
-        // fetch roles from supabase
+
+        // Fetch from Supabase
         const { data, error } = await supabase
           .from("user_roles_view")
           .select()
           .eq("user_id", userId);
-        if (error) {
-          console.error("Error fetching user roles: ", error);
+
+        if (error || !data) {
+          console.error("Failed to fetch roles from Supabase:", error);
           setHasPermission(false);
-          setIsRolesLoading(false);
           return;
         }
-        if (data && data.length > 0) {
-          await AsyncStorage.multiSet([
-            [CACHE_KEY_ROLES, JSON.stringify(data)],
-            [CACHE_KEY_ACCESS_TOKEN, access_token],
-          ]);
-          console.log(data)
-          checkPermissions(data);
-        } else {
-          setHasPermission(false);
-        }
+
+        // Update online and offline caches
+        await AsyncStorage.multiSet([
+          [ONLINE_CACHE_KEY_ROLES, JSON.stringify(data)],
+          [ONLINE_CACHE_KEY_ACCESS_TOKEN, access_token],
+          [OFFLINE_CACHE_KEY, JSON.stringify(data)],
+        ]);
+
+        checkPermissions(data);
       } catch (error) {
-        console.error("Error in getUserRoles: ", error);
+        console.error("Unexpected error in getUserRoles:", error);
         setHasPermission(false);
       } finally {
         setIsRolesLoading(false);
       }
     },
-    [checkPermissions, clearRolesCache]
+    [checkPermissions]
   );
 
   useEffect(() => {
-    console.log("useSupabaseHasPermissions render");
-    
-    if (!isSessionLoading) {
-      if (session?.user.id) {
-        if (lastAccessTokenRef.current !== session.access_token) {
-          getUserRoles(session.user.id, session.access_token);
-          lastAccessTokenRef.current = session.access_token;
-        }
-      } else {
-        if (session && session.user) {
-          clearRolesCache(session.user.id);
-        }
-        setHasPermission(false);
-        setIsRolesLoading(false);
-        lastAccessTokenRef.current = null;
-      }
-    }
-  }, [session, isSessionLoading, getUserRoles, clearRolesCache]);
+    if (isSessionLoading) return;
 
-  return {isLoading: isRolesLoading, hasPermission};
+    console.log("permissions hook render")
+
+    const userId = session?.user?.id;
+    const token = session?.access_token;
+
+    if (!userId || !token) {
+      if (userId) {
+        clearAllRoleCaches(userId);
+      }
+      setHasPermission(false);
+      setIsRolesLoading(false);
+      lastAccessTokenRef.current = null;
+      return;
+    }
+
+    const tokenChanged = lastAccessTokenRef.current !== token;
+    const isOffline = isInternetReachable === false;
+
+    if (tokenChanged || isOffline) {
+      getUserRoles(userId, token, isOffline);
+      lastAccessTokenRef.current = token;
+    }
+  }, [
+    isSessionLoading,
+    session?.user?.id,
+    session?.access_token,
+    isInternetReachable,
+  ]);
+
+  return { isLoading: isRolesLoading, hasPermission };
 }
