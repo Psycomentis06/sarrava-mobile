@@ -11,7 +11,7 @@ import Svg, {
   TSpan,
 } from "react-native-svg";
 
-type ItemsNotFoundProps = { domain: string } & SvgProps;
+type ItemsNotFoundProps = { domain?: string } & SvgProps;
 
 const ItemsNotFound = ({ domain = "بيانات", ...rest }: ItemsNotFoundProps) => (
   <Svg width={1024} height={1024} viewBox="0 0 270.933 270.933" {...rest}>
