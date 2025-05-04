@@ -4,13 +4,14 @@ import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { useUserProfile } from "@/contexts/profile";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import { useTransactions } from "@/hooks/useTransactions";
 import { supabase } from "@/lib/supabase";
 import {
   calculateTransactionFees,
   getExchangeRate,
 } from "@/services/transactions";
 import { hexToRgba } from "@/utils/colors";
-import { Currency, Transaction } from "@/utils/models";
+import { Currency } from "@/utils/models";
 import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Picker } from "@react-native-picker/picker";
@@ -24,7 +25,13 @@ import {
   useForm,
   UseFormWatch,
 } from "react-hook-form";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import BouncyCheckbox from "react-native-bouncy-checkbox";
 
 type UserFormComponentProps = {
@@ -483,6 +490,8 @@ export default function AddTransactionScreen() {
   const { profile } = useUserProfile();
   const router = useRouter();
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [isAddLoading, setIsAddLoading] = useState(false);
+  const { add } = useTransactions();
   const { control, formState, handleSubmit, watch, setValue } =
     useForm<NewTransactionType>({
       resolver: zodResolver(newTransactionSchema),
@@ -537,53 +546,27 @@ export default function AddTransactionScreen() {
   };
 
   const onSubmit = async (data: NewTransactionType) => {
-    const selectedCurrency = data.price.selectedCurrency as Currency;
-    if (!selectedCurrency) {
-      Alert.alert("مستحيل", "لايمكن مواصلة العملية لأنه لاتوجد عملة محددة");
-      return;
+    setIsAddLoading(true);
+    try {
+      const trx = await add(data, profile);
+      Alert.alert("نجاح العمليّة", "تمّ إضافة العمليّة بنجاح");
+      router.replace({
+        pathname: "/(auth)/(tabs)/transaction",
+        params: { id: trx.id }, // Sending the ID to reload the data from the database
+      });
+    } catch (err) {
+      console.error(err);
+      if (err && typeof err === "object" && "error_ar" in err) {
+        Alert.alert("فشل العمليّة", (err as { error_ar: string }).error_ar);
+      } else {
+        Alert.alert(
+          "فشل العمليّة",
+          "خطأ غير متوقّع حدث أثناء محاولة إضافة معاملة جديدة"
+        );
+      }
+    } finally {
+      setIsAddLoading(false);
     }
-    const usdAmount = data.price.totalPrice * selectedCurrency.to_dollar_rate; // calculated based on chosen currency
-    const { governmentTax, operationCost } =
-      calculateTransactionFees(usdAmount);
-    const { data: trxData, error: trxErr } = await supabase
-      .from("transactions")
-      .insert({
-        currency_id: selectedCurrency.id,
-        original_amount: data.price.totalPrice,
-        amount_usd: usdAmount,
-        exchange_rate: selectedCurrency.to_dollar_rate,
-        is_paid_full: data.price.isPaidFull,
-        first_installment: data.price.firstInstallment,
-        created_by: profile?.user_id,
-        sender: data.sender,
-        receiver: data.receiver,
-        // calculate fees
-        // these calculations should happen at a server level to be secure and can't be modified. or at database trigger level
-        // due to time constraints we implemented it here but will be moved in the future
-        operation_cost_usd: operationCost, // consts are returned in USD by default
-        operation_cost_original:
-          operationCost * (1 / selectedCurrency.to_dollar_rate),
-        operation_tax_usd: governmentTax,
-        operation_tax_original:
-          governmentTax * (1 / selectedCurrency.to_dollar_rate),
-      })
-      .select("id")
-      .single();
-
-    if (trxErr) {
-      Alert.alert(
-        "فشل العملية",
-        "لم تكتمل عملية أرسال الأموال لخطئ ما. يرجى المحاولة لاحقا وإذا فشلت فرجاء الأتصال بالمسؤول"
-      );
-      console.error(trxErr);
-      return;
-    }
-    Alert.alert("تم أرسال الأموال بنجاح");
-    const transactionData = trxData as Transaction;
-    router.replace({
-      pathname: "/(auth)/(tabs)/transaction",
-      params: { id: transactionData.id }, // Sending the ID to reload the data from the database
-    });
   };
 
   return (
@@ -643,13 +626,18 @@ export default function AddTransactionScreen() {
           <View style={{ marginVertical: 30, paddingHorizontal: 20 }}>
             <ThemedButton
               onPress={handleSubmit(onSubmit)}
-              disabled={!profile?.currency || formState.isSubmitting}
+              disabled={!profile?.currency || isAddLoading}
+              style={{ opacity: !profile?.currency || isAddLoading ? 0.6 : 1 }}
             >
-              <ThemedText
-                style={{ textAlign: "center", color: palette.background }}
-              >
-                أرسل
-              </ThemedText>
+              {!profile?.currency || isAddLoading ? (
+                <ActivityIndicator color={palette.accent} size={25} />
+              ) : (
+                <ThemedText
+                  style={{ textAlign: "center", color: palette.background }}
+                >
+                  أرسل
+                </ThemedText>
+              )}
             </ThemedButton>
           </View>
         </ThemedView>

@@ -4,14 +4,15 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { UseSupabaseSession } from "@/hooks/useSupabaseSession";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { supabase } from "@/lib/supabase";
+import { useTransactions } from "@/hooks/useTransactions";
 import { Transaction, TransactionStatus } from "@/utils/models";
 import { Picker } from "@react-native-picker/picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -32,11 +33,17 @@ enum TransactionSearchType {
 export default function TransactionScreen() {
   const insets = useSafeAreaInsets();
   const palette = useThemePalette();
-  const { id: newTransactionId } = useLocalSearchParams(); // sent from add transaction screen
   const router = useRouter();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isSessionLoading, session] = UseSupabaseSession();
-  const [isDataLoading, setIsDataLoading] = useState<boolean>(false);
+  const {
+    updateStatus,
+    search,
+    searchResults: transactions,
+    isLoading: isTransactionsLoading,
+    isLoadMoreLoading,
+    hasNextPage,
+    reload,
+    loadMore,
+  } = useTransactions();
   const [
     isUpdateTransactionStatusModalVisible,
     setIsUpdateTransactionStatusModalVisible,
@@ -49,6 +56,11 @@ export default function TransactionScreen() {
     TransactionSearchType.ALL
   );
   const [searchInput, setSearchInput] = useState<string>("");
+  const [isReloading, setIsReloading] = useState<boolean>(false);
+
+  useEffect(() => {
+    console.debug("has next page: ", hasNextPage);
+  }, [hasNextPage]);
 
   const getItemColorByStatus = (status: TransactionStatus) => {
     switch (status) {
@@ -72,7 +84,7 @@ export default function TransactionScreen() {
       case TransactionStatus.CANCELED:
         return "ألغيت";
       case TransactionStatus.CONFIRMED:
-        return "مكتملة";
+        return "إكتملت";
       case TransactionStatus.PENDING:
         return "قيد الانتظار";
       default:
@@ -80,83 +92,28 @@ export default function TransactionScreen() {
     }
   };
 
-  const getTransactions = async () => {
-    try {
-      setIsDataLoading(true);
-      const query = supabase.from("transactions").select(
-        `
-           *,
-          currency:currency_id (
-            id,
-            name,
-            sign,
-            to_dollar_rate,
-            country,
-            flag,
-            created_at,
-            updated_at,
-            updated_by,
-            ar_name,
-            country_code,
-            flag_url
-          )
-          `
-      );
-
-      const searchValue = searchInput.trim();
-      if (searchValue) {
-        const queryBySender =
-          `sender->>firstname.ilike.%${searchValue}%,` +
-          `sender->>lastname.ilike.%${searchValue}%,` +
-          `sender->>email.ilike.%${searchValue}%,` +
-          `sender->>address.ilike.%${searchValue}%,` +
-          `sender->>phone.ilike.%${searchValue}%`;
-        const queryByReceiver =
-          `receiver->>firstname.ilike.%${searchValue}%,` +
-          `receiver->>lastname.ilike.%${searchValue}%,` +
-          `receiver->>email.ilike.%${searchValue}%,` +
-          `receiver->>address.ilike.%${searchValue}%,` +
-          `receiver->>phone.ilike.%${searchValue}%`;
-
-        if (searchType === TransactionSearchType.SENDER) {
-          query.or(queryBySender);
-        } else if (searchType === TransactionSearchType.RECEIVER) {
-          query.or(queryByReceiver);
+  const getTransactionArabicStatusFromTransaction = (
+    trx: Transaction
+  ): string => {
+    switch (trx.status) {
+      case TransactionStatus.FAILED:
+        return "فشلت";
+      case TransactionStatus.CANCELED:
+        return "ألغيت";
+      case TransactionStatus.CONFIRMED:
+        return "إكتملت";
+      case TransactionStatus.PENDING:
+        if (trx.is_paid_full === true) {
+          return "دفعة بالكامل";
+        } else if (trx.is_paid_full === false) {
+          return "دفعة جزئيا";
         } else {
-          query.or(queryBySender + "," + queryByReceiver);
+          return "قيد الانتظار";
         }
-      }
-
-      query
-        .eq("created_by", session?.user.id)
-        .order("created_at", { ascending: false });
-      // TODO add infinite scroll
-
-      const { data, error } = await query;
-
-      if (error) {
-        Alert.alert("خطأ", "حدث خطأ ما أثناء تحميل المعلومات");
-        console.error(error);
-        return;
-      }
-
-      if (data) {
-        setTransactions(data);
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert("خطأ", "حدث خطأ ما أثناء تحميل المعلومات");
-      return;
-    } finally {
-      setIsDataLoading(false);
+      default:
+        return "غير مصنف";
     }
   };
-
-  useEffect(() => {
-    if (session !== null) {
-      getTransactions();
-    }
-  }, [session, newTransactionId]);
 
   const handleUpdateTransactionState = async (status: TransactionStatus) => {
     if (selectedTransaction == null) {
@@ -202,36 +159,17 @@ export default function TransactionScreen() {
     transaction: Transaction,
     status: TransactionStatus
   ) => {
-    const { error } = await supabase
-      .from("transactions")
-      .update({
-        status,
-      })
-      .eq("id", transaction.id);
-
-    if (error != null) {
-      Alert.alert("خطأ", "حدث خطأ أثناء تحديث المعاملة");
-      console.error(error);
-      return;
+    try {
+      await updateStatus(transaction, status);
+      Alert.alert(
+        "نجاح العملية",
+        "تم تحديث حالة المعاملة إلى " +
+          getTransactionArabicStatus(status) +
+          " بنجاح"
+      );
+    } catch (e) {
+      console.error(e);
     }
-    Alert.alert(
-      "نجاح العملية",
-      "تم تحديث حالة المعاملة إلى " +
-        getTransactionArabicStatus(status) +
-        " بنجاح"
-    );
-
-    // update local state
-    setTransactions((prev) =>
-      prev.map((t) =>
-        t.id === transaction.id
-          ? {
-              ...t,
-              status: status,
-            }
-          : t
-      )
-    );
   };
 
   // modal to update transaction status
@@ -342,7 +280,7 @@ export default function TransactionScreen() {
               onFocus={() => setIsSearchInputFocused(true)}
               onBlur={() => setIsSearchInputFocused(false)}
               returnKeyType="search"
-              onEndEditing={getTransactions}
+              onEndEditing={() => search(searchInput, searchType)}
             />
           </View>
           <ThemedButton
@@ -364,125 +302,161 @@ export default function TransactionScreen() {
           </ThemedButton>
         </View>
 
-        <FlatList
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingBottom: 20,
-          }}
-          style={{ paddingHorizontal: 10 }}
-          data={transactions}
-          keyExtractor={(i) => i.id}
-          ListEmptyComponent={
-            <View>
-              <ItemsNotFound width="100%" height="100%" />
-              <ThemedText
-                type="md"
-                weight="medium"
-                style={{
-                  position: "absolute",
-                  bottom: 100,
-                  left: 50,
-                  opacity: 0.6,
-                }}
-              >
-                لم نتمكن من العثور على أي معاملة
-              </ThemedText>
-            </View>
-          }
-          renderItem={(i) => {
-            return (
-              <View key={i.item.id}>
-                <Pressable
-                  style={[
-                    styles.transactionsListItem,
-                    { backgroundColor: palette.tint },
-                  ]}
-                  android_ripple={{
-                    color: "rgba(0,0,0,0.26)",
-                    foreground: true,
-                    borderless: false,
-                  }}
-                  onLongPress={() => {
-                    const status = i.item?.status;
-                    if (status == TransactionStatus.PENDING) {
-                      setIsUpdateTransactionStatusModalVisible(true);
-                      setSelectedTransaction(i.item);
-                    }
-                  }}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/transaction/[id]",
-                      params: {
-                        id: i.item.id,
-                        transaction: JSON.stringify(i.item),
-                      },
-                    });
-                  }}
-                >
-                  <View
+        {isTransactionsLoading ? (
+          <LoadingOverlay text="تحميل بيانات المعاملات" />
+        ) : (
+          <>
+            <ThemedText style={{ opacity: 0.6 }}>
+              تمّ العثور على{" "}
+              <ThemedText weight="bold">{transactions.length}</ThemedText>{" "}
+              معاملة
+            </ThemedText>
+            <FlatList
+              contentContainerStyle={{
+                flexGrow: 1,
+                paddingBottom: 20,
+              }}
+              style={{ paddingHorizontal: 10 }}
+              data={transactions}
+              onRefresh={async () => {
+                setIsReloading(true);
+                try {
+                  await reload();
+                } catch (e) {
+                  console.error(e);
+                } finally {
+                  setIsReloading(false);
+                }
+              }}
+              refreshing={isReloading}
+              keyExtractor={(i) => i.id}
+              ListEmptyComponent={
+                <View>
+                  <ItemsNotFound width="100%" height="100%" />
+                  <ThemedText
+                    type="md"
+                    weight="medium"
                     style={{
-                      justifyContent: "space-between",
-                      flexDirection: "row",
-                      alignItems: "center",
+                      position: "absolute",
+                      bottom: 100,
+                      left: 50,
+                      opacity: 0.6,
                     }}
                   >
-                    <ThemedText type="xs" style={{ opacity: 0.7 }}>
-                      {"#" + i.item.id}
-                    </ThemedText>
-                    <ThemedText type="sm">
-                      {new Date(i.item.created_at).toLocaleString()}
-                    </ThemedText>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 5 }}>
-                    <ThemedText type="l" weight="medium">
-                      {i.item.receiver?.firstname +
-                        " " +
-                        i.item.receiver?.lastname}
-                    </ThemedText>
-                  </View>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      marginVertical: 5,
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        gap: 5,
-                        alignItems: "flex-end",
+                    لم نتمكن من العثور على أي معاملة
+                  </ThemedText>
+                </View>
+              }
+              onEndReached={async () => {
+                if (hasNextPage && !isLoadMoreLoading) {
+                  await loadMore();
+                }
+              }}
+              ListFooterComponent={
+                isLoadMoreLoading ? (
+                  <ActivityIndicator size="small" color={palette.accent} />
+                ) : null
+              }
+              renderItem={(i) => {
+                return (
+                  <View key={i.item.id}>
+                    <Pressable
+                      style={[
+                        styles.transactionsListItem,
+                        { backgroundColor: palette.tint },
+                      ]}
+                      android_ripple={{
+                        color: "rgba(0,0,0,0.26)",
+                        foreground: true,
+                        borderless: false,
+                      }}
+                      onLongPress={() => {
+                        const status = i.item?.status;
+                        if (status == TransactionStatus.PENDING) {
+                          setIsUpdateTransactionStatusModalVisible(true);
+                          setSelectedTransaction(i.item);
+                        }
+                      }}
+                      onPress={() => {
+                        router.push({
+                          pathname: "/transaction/[id]",
+                          params: {
+                            id: i.item.id,
+                            transaction: JSON.stringify(i.item),
+                          },
+                        });
                       }}
                     >
-                      <ThemedText style={{ opacity: 0.7 }}>
-                        المبلغ:{"    "}
-                      </ThemedText>
-                      <ThemedText
-                        weight="medium"
-                        type="l"
-                        style={{ color: palette.accent }}
-                      >
-                        {i.item.original_amount + " " + i.item.currency.sign}
-                      </ThemedText>
-                    </View>
-                    <ThemedText style={{ textAlign: "right", opacity: 0.7 }}>
-                      الحالة:{" "}
-                      <ThemedText
-                        weight="medium"
+                      <View
                         style={{
-                          color: getItemColorByStatus(i.item.status),
-                          fontSize: 14,
+                          justifyContent: "space-between",
+                          flexDirection: "row",
+                          alignItems: "center",
                         }}
                       >
-                        {getTransactionArabicStatus(i.item.status)}
-                      </ThemedText>
-                    </ThemedText>
+                        <ThemedText type="xs" style={{ opacity: 0.7 }}>
+                          {"#" + i.item.id}
+                        </ThemedText>
+                        <ThemedText type="sm">
+                          {new Date(i.item.created_at).toLocaleString()}
+                        </ThemedText>
+                      </View>
+                      <View style={{ flexDirection: "row", gap: 5 }}>
+                        <ThemedText type="l" weight="medium">
+                          {i.item.receiver?.firstname +
+                            " " +
+                            i.item.receiver?.lastname}
+                        </ThemedText>
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          marginVertical: 5,
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            gap: 5,
+                            alignItems: "flex-end",
+                          }}
+                        >
+                          <ThemedText style={{ opacity: 0.7 }}>
+                            المبلغ:{"    "}
+                          </ThemedText>
+                          <ThemedText
+                            weight="medium"
+                            type="l"
+                            style={{ color: palette.accent }}
+                          >
+                            {i.item.original_amount +
+                              " " +
+                              i.item.currency.sign}
+                          </ThemedText>
+                        </View>
+                        <ThemedText
+                          style={{ textAlign: "right", opacity: 0.7 }}
+                        >
+                          الحالة:{" "}
+                          <ThemedText
+                            weight="medium"
+                            style={{
+                              color: getItemColorByStatus(i.item.status),
+                              fontSize: 14,
+                            }}
+                          >
+                            {getTransactionArabicStatusFromTransaction(i.item)}
+                          </ThemedText>
+                        </ThemedText>
+                      </View>
+                    </Pressable>
                   </View>
-                </Pressable>
-              </View>
-            );
-          }}
-        />
+                );
+              }}
+            />
+          </>
+        )}
       </View>
     </ThemedView>
   );
