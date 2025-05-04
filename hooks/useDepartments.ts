@@ -1,5 +1,7 @@
+import { useUserProfile } from "@/contexts/profile";
 import { supabase } from "@/lib/supabase";
 import { AgentDepartment } from "@/utils/models";
+import { NewAgentDepartmentSchemaType } from "@/utils/schemas";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { useCallback, useEffect, useState } from "react";
@@ -11,7 +13,7 @@ export type UseDepartmentsHookReturnType = {
   departments: AgentDepartment[];
   searchResults: AgentDepartment[];
   reload: () => Promise<AgentDepartment[]>;
-  add: (dep: AgentDepartment) => Promise<AgentDepartment>;
+  add: (dep: NewAgentDepartmentSchemaType) => Promise<AgentDepartment>;
   search: (val: string) => Promise<AgentDepartment[]>;
 };
 
@@ -26,6 +28,7 @@ export function useDepartments(): UseDepartmentsHookReturnType {
   const [searchResults, setSearchResults] = useState<AgentDepartment[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const [arError, setArError] = useState<string | null>(null);
+  const { profile } = useUserProfile();
 
   const getDepartmentsFromSupabase = async (): Promise<AgentDepartment[]> => {
     try {
@@ -154,16 +157,40 @@ export function useDepartments(): UseDepartmentsHookReturnType {
     [departments]
   );
 
-  const add = async (dep: AgentDepartment): Promise<AgentDepartment> => {
+  const add = async (
+    dep: NewAgentDepartmentSchemaType
+  ): Promise<AgentDepartment> => {
     try {
-      const newDeps = [...departments, dep];
+      const { data, error } = await supabase
+        .from("departments")
+        .insert({
+          name: dep.name,
+          country: dep.country.name,
+          country_ar: dep.country.name_ar,
+          country_code: dep.country.code,
+          city: dep.city,
+          zipcode: dep.zipcode,
+          address: dep.address,
+          updated_at: null,
+          updated_by: profile?.firstname + " " + profile?.lastname,
+        })
+        .select()
+        .single();
+      if (error) {
+        console.error("Department failed: ", error);
+        throw { error: error, error_ar: "فشل إضافة فرع جديد" };
+      }
+      console.log("Department created: ", data);
+
+      const newDep = data as AgentDepartment;
+      const newDeps = [newDep, ...departments];
       _departments_session_cache = newDeps;
       setDepartments(newDeps);
       await AsyncStorage.setItem(
         OFFLINE_DEPARTMENTS_CACHE_KEY,
         JSON.stringify(newDeps)
       );
-      return dep;
+      return newDep;
     } catch (err) {
       const error = err as Error;
       setError(error);

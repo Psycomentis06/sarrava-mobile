@@ -3,10 +3,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { Countries } from "@/constants/Countries";
-import { useUserProfile } from "@/contexts/profile";
+import { useDepartments } from "@/hooks/useDepartments";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { supabase } from "@/lib/supabase";
-import { AgentDepartment } from "@/utils/models";
 import {
   newAgentDepartmentSchema,
   NewAgentDepartmentSchemaType,
@@ -19,7 +17,6 @@ import { Controller, useForm } from "react-hook-form";
 import { ActivityIndicator, Alert, View } from "react-native";
 
 export default function AddDepartmentScreen() {
-  const { profile } = useUserProfile();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { handleSubmit, control } = useForm({
     resolver: zodResolver(newAgentDepartmentSchema),
@@ -31,36 +28,17 @@ export default function AddDepartmentScreen() {
       zipcode: "",
     },
   });
+  const { add } = useDepartments();
   const palette = useThemePalette();
   const router = useRouter();
   const addDepartment = async (formData: NewAgentDepartmentSchemaType) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("departments")
-        .insert({
-          name: formData.name,
-          country: formData.country.name,
-          country_ar: formData.country.name_ar,
-          country_code: formData.country.code,
-          city: formData.city,
-          zipcode: formData.zipcode,
-          address: formData.address,
-          updated_at: null,
-          updated_by: profile?.firstname + " " + profile?.lastname,
-        })
-        .select()
-        .single();
-      if (error) {
-        console.error("Department failed: ", error);
-        return;
-      }
+      const newDep = await add(formData);
       Alert.alert("نجاح العمليّة", "تمّ إضافة فرع جديد بنجاح");
-      console.log("Department created: ", data);
-      const newDepartment: AgentDepartment = data;
       router.replace({
         pathname: "/(auth)/(tabs)/department",
-        params: { id: newDepartment.id },
+        params: { id: newDep.id },
       });
     } catch (err) {
       console.error(err);
