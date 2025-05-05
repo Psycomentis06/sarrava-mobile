@@ -70,201 +70,185 @@ const DATE_RANGE_OPTIONS = [
 export default function CreateReportScreen() {
   const palette = useThemePalette();
   const router = useRouter();
+
+  const [showFromDatePicker, setShowFromDatePicker] = useState(false);
+  const [showToDatePicker, setShowToDatePicker] = useState(false);
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<NewReportType>({
+    resolver: zodResolver(newReportSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      dateRangeType: "past30days",
+      fromDate: new Date(new Date().setDate(new Date().getDate() - 30)),
+      toDate: new Date(),
+    },
+  });
+
+  const dateRangeType = watch("dateRangeType");
+  const fromDate = watch("fromDate");
+  const toDate = watch("toDate");
+  useEffect(() => {
+    console.log("From date: ", fromDate);
+  }, [fromDate]);
+
+  useEffect(() => {
+    console.log("To date: ", toDate);
+  }, [toDate]);
+
+  useEffect(() => {
+    console.log("Date range type: ", dateRangeType);
+  }, [dateRangeType]);
+
   const [agentActivity, setAgentActivity] = useState<AgentActivityState>({
     firstTransactionDate: null,
     lastTransactionDate: null,
     hasTransactions: false,
   });
-  const [showFromDatePicker, setShowFromDatePicker] = useState<boolean>(false);
-  const [showToDatePicker, setShowToDatePicker] = useState<boolean>(false);
+
   const [existingReportCheck, setExistingReportCheck] =
-    useState<ExistingReportCheckState>({
-      isChecking: false,
-      exists: false,
-    });
+    useState<ExistingReportCheckState>({ isChecking: false, exists: false });
 
-  const { control, handleSubmit, watch, setValue, formState } =
-    useForm<NewReportType>({
-      resolver: zodResolver(newReportSchema),
-      defaultValues: {
-        title: "",
-        description: "",
-        dateRangeType: "past30days",
-        fromDate: new Date(new Date().setDate(new Date().getDate() - 30)),
-        toDate: new Date(),
-      },
-    });
-
-  const dateRangeType = watch("dateRangeType");
-  const fromDate = watch("fromDate");
-  const toDate = watch("toDate");
-
-  // Fetch agent's activity range on mount
-  useEffect(() => {
-    fetchAgentActivityRange();
-  }, []);
-
-  const fetchAgentActivityRange = async () => {
-    try {
-      // Assuming you have the current agent's ID stored somewhere
-      const { data: session } = await supabase.auth.getSession();
-      const agentId = session?.session?.user?.id;
-
-      if (!agentId) {
-        Alert.alert("خطأ", "لم يتم العثور على بيانات المستخدم");
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("transactions_agent_stats_view")
-        .select("first_transaction_date, last_transaction_date")
-        .eq("agent_id", agentId)
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        setAgentActivity({
-          firstTransactionDate: data.first_transaction_date
-            ? new Date(data.first_transaction_date)
-            : null,
-          lastTransactionDate: data.last_transaction_date
-            ? new Date(data.last_transaction_date)
-            : null,
-          hasTransactions: !!data.first_transaction_date,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching agent activity range:", error);
-      Alert.alert("خطأ", "حدث خطأ أثناء جلب بيانات النشاط");
-    }
+  const getSessionAgentId = async (): Promise<string | null> => {
+    const { data: session } = await supabase.auth.getSession();
+    return session?.session?.user?.id ?? null;
   };
 
-  const checkExistingReport = async (fromDate: Date, toDate: Date) => {
+  useEffect(() => {
+    const fetchAgentActivity = async () => {
+      try {
+        const agentId = await getSessionAgentId();
+        if (!agentId) return Alert.alert("خطأ", "لا يمكن جلب المستخدم");
+
+        const { data, error } = await supabase
+          .from("transactions_agent_stats_view")
+          .select("first_transaction_date, last_transaction_date")
+          .eq("agent_id", agentId)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setAgentActivity({
+            firstTransactionDate: data.first_transaction_date
+              ? new Date(data.first_transaction_date)
+              : null,
+            lastTransactionDate: data.last_transaction_date
+              ? new Date(data.last_transaction_date)
+              : null,
+            hasTransactions: !!data.first_transaction_date,
+          });
+        }
+      } catch (error) {
+        console.error("Agent activity fetch failed:", error);
+      }
+    };
+
+    fetchAgentActivity();
+  }, []);
+
+  const checkExistingReport = async (from: Date, to: Date) => {
     try {
       setExistingReportCheck({ isChecking: true, exists: false });
 
-      const { data: session } = await supabase.auth.getSession();
-      const agentId = session?.session?.user?.id;
-
-      const fromDateCopy = new Date(fromDate);
-      const toDateCopy = new Date(toDate);
+      const agentId = await getSessionAgentId();
+      if (!agentId) return;
 
       const { data, error } = await supabase
         .from("reports")
         .select("id")
         .eq("agent_id", agentId)
-        .eq("from_date", fromDateCopy.toISOString().split("T")[0])
-        .eq("to_date", toDateCopy.toISOString().split("T")[0])
+        .eq("from_date", from.toISOString().split("T")[0])
+        .eq("to_date", to.toISOString().split("T")[0])
         .maybeSingle();
 
       if (error) throw error;
 
-      setExistingReportCheck({
-        isChecking: false,
-        exists: !!data,
-      });
+      setExistingReportCheck({ isChecking: false, exists: !!data });
     } catch (error) {
-      console.error("Error checking existing report:", error);
+      console.error("Report existence check failed:", error);
       setExistingReportCheck({ isChecking: false, exists: false });
     }
   };
 
-  // When date range type changes, update the dates
-  useEffect(() => {
+  const updateDatesForRange = (type: string) => {
     const today = new Date();
-    let newFromDate = fromDate;
-    let newToDate = today;
+    let from = new Date();
+    let to = new Date();
 
-    if (dateRangeType === "custom") {
-      return;
-    }
-    switch (dateRangeType) {
+    switch (type) {
       case "today":
-        newFromDate = new Date(today.setHours(0, 0, 0, 0));
-        newToDate = new Date();
+        from = new Date(today.setHours(0, 0, 0, 0));
         break;
       case "yesterday":
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        newFromDate = new Date(yesterday.setHours(0, 0, 0, 0));
-        newToDate = new Date(yesterday.setHours(23, 59, 59, 999));
+        from = new Date(today.setDate(today.getDate() - 1));
+        from.setHours(0, 0, 0, 0);
+        to = new Date(from);
+        to.setHours(23, 59, 59, 999);
         break;
       case "past7days":
-        newFromDate = new Date(new Date().setDate(today.getDate() - 7));
+        from = new Date(today.setDate(today.getDate() - 7));
         break;
       case "past30days":
-        newFromDate = new Date(new Date().setDate(today.getDate() - 30));
+        from = new Date(today.setDate(today.getDate() - 30));
         break;
       case "thisMonth":
-        newFromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
         break;
       case "lastMonth":
-        newFromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        newToDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        to = new Date(today.getFullYear(), today.getMonth(), 0);
         break;
       case "thisYear":
-        newFromDate = new Date(today.getFullYear(), 0, 1);
-        break;
-      default:
-        // Custom - don't change dates
+        from = new Date(today.getFullYear(), 0, 1);
         break;
     }
-    setValue("fromDate", newFromDate);
-    setValue("toDate", newToDate);
-    checkExistingReport(newFromDate, newToDate);
+
+    setValue("fromDate", from);
+    setValue("toDate", to);
+    checkExistingReport(from, to);
+  };
+
+  useEffect(() => {
+    if (dateRangeType !== "custom") {
+      updateDatesForRange(dateRangeType);
+    }
   }, [dateRangeType]);
 
   useEffect(() => {
     if (dateRangeType === "custom") {
       checkExistingReport(fromDate, toDate);
     }
-  }, [
-    dateRangeType === "custom" && fromDate,
-    dateRangeType === "custom" && toDate,
-  ]);
+  }, [fromDate, toDate]);
 
   const isDateRangeValid = (): boolean => {
-    if (!agentActivity.hasTransactions) return false;
+    const { firstTransactionDate, lastTransactionDate } = agentActivity;
+    if (!firstTransactionDate || !lastTransactionDate) return false;
 
-    // Check if selected date range is within agent's activity period
-    const selectedFromDate = new Date(fromDate);
-    selectedFromDate.setHours(0, 0, 0, 0);
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
 
-    const selectedToDate = new Date(toDate);
-    selectedToDate.setHours(23, 59, 59, 999);
-
-    // Only proceed if we have valid dates
-    if (
-      !agentActivity.firstTransactionDate ||
-      !agentActivity.lastTransactionDate
-    ) {
-      return false;
-    }
-
-    const firstDate = new Date(agentActivity.firstTransactionDate);
-    const lastDate = new Date(agentActivity.lastTransactionDate);
-
-    // Check for overlap with activity range
-    return !(selectedToDate < firstDate || selectedFromDate > lastDate);
+    return !(to < firstTransactionDate || from > lastTransactionDate);
   };
 
   const onSubmit = async (data: NewReportType) => {
+    if (!isDateRangeValid()) {
+      return Alert.alert("خطأ", "فترة التقرير لا تتطابق مع نشاط الوكيل");
+    }
+    if (existingReportCheck.exists) {
+      return Alert.alert("خطأ", "يوجد تقرير مسبق لنفس الفترة");
+    }
+
     try {
-      if (!isDateRangeValid()) {
-        Alert.alert("خطأ", "فترة التقرير لا تتطابق مع فترة نشاط الوكيل");
-        return;
-      }
+      const agentId = await getSessionAgentId();
+      if (!agentId) return;
 
-      if (existingReportCheck.exists) {
-        Alert.alert("خطأ", "يوجد تقرير مسبق لنفس الفترة الزمنية");
-        return;
-      }
-
-      const { data: session } = await supabase.auth.getSession();
-      const agentId = session?.session?.user?.id;
-
-      // Call the generate_agent_report function
       const { data: reportId, error } = await supabase.rpc(
         "generate_agent_report",
         {
@@ -284,20 +268,20 @@ export default function CreateReportScreen() {
         params: { id: reportId },
       });
     } catch (error) {
-      console.error("Error creating report:", error);
-      Alert.alert(
-        "خطأ",
-        "حدث خطأ أثناء إنشاء التقرير. يرجى المحاولة مرة أخرى."
-      );
+      console.error("Create report failed:", error);
+      Alert.alert("خطأ", "حدث خطأ أثناء إنشاء التقرير.");
     }
   };
 
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString("ar-TN", {
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString("ar-TN", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
+
+  const truncateToStartOfDay = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   };
 
   return (
@@ -340,13 +324,13 @@ export default function CreateReportScreen() {
             <Controller
               name="title"
               control={control}
-              render={({ field: { value, onChange, onBlur } }) => (
+              render={({ field: { value, onChange, onBlur }, fieldState }) => (
                 <ThemedTextInput
                   placeholder="عنوان التقرير"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={formState.errors.title?.message}
+                  error={fieldState?.error?.message}
                 />
               )}
             />
@@ -354,7 +338,7 @@ export default function CreateReportScreen() {
             <Controller
               name="description"
               control={control}
-              render={({ field: { value, onChange, onBlur } }) => (
+              render={({ field: { value, onChange, onBlur }, fieldState }) => (
                 <ThemedTextInput
                   placeholder="وصف التقرير (اختياري)"
                   multiline
@@ -362,7 +346,7 @@ export default function CreateReportScreen() {
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={formState.errors.description?.message}
+                  error={fieldState?.error?.message}
                   style={{ textAlignVertical: "top", minHeight: 80 }}
                 />
               )}
@@ -402,10 +386,19 @@ export default function CreateReportScreen() {
 
             {dateRangeType === "custom" && (
               <View style={{ gap: 15 }}>
+                <ThemedText
+                  style={{ marginBottom: 8, fontSize: 12, color: "gray" }}
+                >
+                  يمكنك اختيار تاريخ بين{" "}
+                  {formatDate(
+                    new Date(agentActivity.firstTransactionDate || 0)
+                  )}{" "}
+                  و {formatDate(new Date())}
+                </ThemedText>
                 <Controller
                   name="fromDate"
                   control={control}
-                  render={({ field: { value } }) => (
+                  render={({ field: { value, onChange } }) => (
                     <Pressable
                       onPress={() => setShowFromDatePicker(true)}
                       style={{
@@ -430,7 +423,8 @@ export default function CreateReportScreen() {
                         maximumDate={new Date()}
                         onConfirm={(date) => {
                           setShowFromDatePicker(false);
-                          setValue("fromDate", date);
+                          setValue("dateRangeType", "custom");
+                          onChange(truncateToStartOfDay(date));
                         }}
                         onCancel={() => {
                           setShowFromDatePicker(false);
