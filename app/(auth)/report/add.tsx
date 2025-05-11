@@ -5,7 +5,6 @@ import React, { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import DatePicker from "react-native-date-picker";
-import { z } from "zod";
 
 import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
@@ -14,31 +13,9 @@ import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
+import { newReportSchema, NewReportType } from "@/utils/schemas";
+import { useNetInfo } from "@react-native-community/netinfo";
 
-// Validation schema for new report
-const newReportSchema = z
-  .object({
-    title: z.string().min(1, "العنوان مطلوب"),
-    description: z.string().optional(),
-    dateRangeType: z.enum([
-      "custom",
-      "today",
-      "yesterday",
-      "past7days",
-      "past30days",
-      "thisMonth",
-      "lastMonth",
-      "thisYear",
-    ]),
-    fromDate: z.date(),
-    toDate: z.date(),
-  })
-  .refine((data) => data.fromDate <= data.toDate, {
-    message: "تاريخ البداية يجب أن يكون قبل تاريخ النهاية",
-    path: ["fromDate"],
-  });
-
-type NewReportType = z.infer<typeof newReportSchema>;
 
 type DateRangeOption = {
   label: string;
@@ -79,7 +56,6 @@ export default function CreateReportScreen() {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
   } = useForm<NewReportType>({
     resolver: zodResolver(newReportSchema),
     defaultValues: {
@@ -90,21 +66,11 @@ export default function CreateReportScreen() {
       toDate: new Date(),
     },
   });
+  const {isInternetReachable} = useNetInfo()
 
   const dateRangeType = watch("dateRangeType");
   const fromDate = watch("fromDate");
   const toDate = watch("toDate");
-  useEffect(() => {
-    console.log("From date: ", fromDate);
-  }, [fromDate]);
-
-  useEffect(() => {
-    console.log("To date: ", toDate);
-  }, [toDate]);
-
-  useEffect(() => {
-    console.log("Date range type: ", dateRangeType);
-  }, [dateRangeType]);
 
   const [agentActivity, setAgentActivity] = useState<AgentActivityState>({
     firstTransactionDate: null,
@@ -221,11 +187,11 @@ export default function CreateReportScreen() {
     }
   }, [dateRangeType]);
 
-  useEffect(() => {
-    if (dateRangeType === "custom") {
-      checkExistingReport(fromDate, toDate);
-    }
-  }, [fromDate, toDate]);
+  // useEffect(() => {
+  //   if (dateRangeType === "custom") {
+  //     checkExistingReport(fromDate, toDate);
+  //   }
+  // }, [fromDate, toDate]);
 
   const isDateRangeValid = (): boolean => {
     const { firstTransactionDate, lastTransactionDate } = agentActivity;
@@ -238,6 +204,9 @@ export default function CreateReportScreen() {
   };
 
   const onSubmit = async (data: NewReportType) => {
+    if(isInternetReachable === false) {
+      return Alert.alert("لايوجد إتصال أنترنات", "لايمكنك إضافة تقرير إلّى عند الأتصال بالأنترنات")
+    }
     if (!isDateRangeValid()) {
       return Alert.alert("خطأ", "فترة التقرير لا تتطابق مع نشاط الوكيل");
     }
