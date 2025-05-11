@@ -180,3 +180,27 @@ export const newAgentDepartmentSchema = z.object({
 export type NewAgentDepartmentSchemaType = z.infer<
   typeof newAgentDepartmentSchema
 >;
+
+export const newReportSchema = z
+  .object({
+    title: z.string().min(1, "العنوان مطلوب"),
+    description: z.string().optional(),
+    dateRangeType: z.enum([
+      "custom",
+      "today",
+      "yesterday",
+      "past7days",
+      "past30days",
+      "thisMonth",
+      "lastMonth",
+      "thisYear",
+    ]),
+    fromDate: z.date(),
+    toDate: z.date(),
+  })
+  .refine((data) => data.fromDate <= data.toDate, {
+    message: "تاريخ البداية يجب أن يكون قبل تاريخ النهاية",
+    path: ["fromDate"],
+  });
+
+export type NewReportType = z.infer<typeof newReportSchema>;
