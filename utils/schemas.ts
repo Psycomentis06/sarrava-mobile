@@ -26,6 +26,13 @@ export const newTransactionPriceSchema = z
       .number({ message: "رقم السعر غير صالح" })
       .nonnegative({ message: "السعر يجب أن يكون رقمًا موجبًا." })
       .min(1, { message: "المبلغ يجب أن يكون 1" }),
+    operationCostPercent: z.coerce
+      .number({ message: "سعر غير صالح" })
+      .min(0, { message: "0 هو أقل نسبة مائويّة مسموحة" })
+      .max(100, { message: "100 هي أكبر نسبة مائويّة مسموحة" }),
+    operationCostFixed: z.coerce
+      .number({ message: "السعر غير صالح" })
+      .nonnegative({ message: "قيمة سلبيّة" }),
     selectedCurrency: z.any(),
     isPaidFull: z.boolean(),
     firstInstallment: z.coerce
@@ -94,12 +101,9 @@ export const newAgentSchema = z
       .string()
       .nonempty({ message: "البريد الألكتروني مطلوب" })
       .email({ message: "عنوان البريد الإلكتروني غير صالح." }),
-    phone: z
-      .string()
-      .nonempty({ message: "رقم الهاتف مطلوب" })
-      .min(8, {
-        message: "يجب أن يكون رقم الهاتف مكونًا من 8 أرقام على الأقل",
-      }),
+    phone: z.string().nonempty({ message: "رقم الهاتف مطلوب" }).min(8, {
+      message: "يجب أن يكون رقم الهاتف مكونًا من 8 أرقام على الأقل",
+    }),
     address: z.string().nonempty({ message: "العنوان مطلوب" }),
     password: z
       .string()

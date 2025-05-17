@@ -6,10 +6,7 @@ import { useUserProfile } from "@/contexts/profile";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { useTransactions } from "@/hooks/useTransactions";
 import { supabase } from "@/lib/supabase";
-import {
-  calculateTransactionFees,
-  getExchangeRate,
-} from "@/services/transactions";
+import { getExchangeRate } from "@/services/transactions";
 import { hexToRgba } from "@/utils/colors";
 import { Currency } from "@/utils/models";
 import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
@@ -187,6 +184,8 @@ function TransactionFormComponent({
   const selectedCurrency = watch("price.selectedCurrency") as Currency;
   const totalPrice = watch("price.totalPrice");
   const isPaidFull = watch("price.isPaidFull");
+  const operationCostPercent = watch("price.operationCostPercent");
+  const operationCostFixed = watch("price.operationCostFixed");
 
   const getConvertedAmount = (
     amount: number,
@@ -200,42 +199,31 @@ function TransactionFormComponent({
 
   // Calculate fees with detailed breakdown in selected currency
   const getFeeBreakdown = () => {
+    const percent = Number(operationCostPercent) || 0;
+    const fixed = Number(operationCostFixed) || 0;
+
     if (!selectedCurrency || !totalPrice || isNaN(totalPrice)) {
       return null;
     }
 
     try {
-      // Convert amount to USD for fee calculation
-      const amountInUSD = totalPrice * selectedCurrency.to_dollar_rate;
+      const percentRate = percent / 100;
 
-      // Calculate fees in USD
-      const { operationCost, governmentTax, totalFee, tier, governmentRate } =
-        calculateTransactionFees(amountInUSD);
+      const percentAmount = Math.round(totalPrice * percentRate * 100) / 100;
+      const fixedAmount = Math.round(fixed * 100) / 100;
 
-      // Convert back to selected currency
-      const usdToSelectedRate = 1 / selectedCurrency.to_dollar_rate;
-      const operationCostInSelectedCurrency =
-        Math.round(operationCost * usdToSelectedRate * 100) / 100;
-      const governmentTaxInSelectedCurrency =
-        Math.round(governmentTax * usdToSelectedRate * 100) / 100;
-      const totalFeeInSelectedCurrency =
-        Math.round(totalFee * usdToSelectedRate * 100) / 100;
+      const totalFee =
+        Math.round((percentAmount + fixedAmount) * 100) / 100;
 
       return {
-        operationCost: operationCostInSelectedCurrency,
-        governmentTax: governmentTaxInSelectedCurrency,
-        totalFee: totalFeeInSelectedCurrency,
-        tier,
-        governmentRate,
-        formattedTierInfo:
-          tier.feeType === "fixed"
-            ? `${Math.round(tier.fee * usdToSelectedRate * 100) / 100} ${
-                selectedCurrency.sign
-              }`
-            : `${(tier.fee * 100).toFixed(1)}%`,
+        percentAmount,
+        fixedAmount,
+        totalFee,
+        formattedPercent: `${percent.toFixed(1)}%`,
+        formattedFixed: `${selectedCurrency.sign}${fixedAmount}`,
       };
     } catch (error) {
-      console.error("Fee calculation error:", error);
+      console.error("Fee breakdown calculation error:", error);
       return null;
     }
   };
@@ -243,7 +231,7 @@ function TransactionFormComponent({
   // Calculate fees breakdown
   const feeBreakdown = useMemo(
     () => getFeeBreakdown(),
-    [selectedCurrency, totalPrice]
+    [selectedCurrency, totalPrice, operationCostFixed, operationCostPercent]
   );
 
   const renderFeeBreakdown = () => {
@@ -268,15 +256,11 @@ function TransactionFormComponent({
 
         <View style={{ marginLeft: 10 }}>
           <ThemedText type="sm">
-            {`• رسوم المعاملة${
-              feeBreakdown.tier ? ` (${feeBreakdown.formattedTierInfo})` : ""
-            } : ${selectedCurrency.sign} ${feeBreakdown.operationCost}`}
+            {`• النسبة (${feeBreakdown.formattedPercent}) : ${selectedCurrency.sign} ${feeBreakdown.percentAmount}`}
           </ThemedText>
 
           <ThemedText type="sm">
-            {`• الضريبة الحكومية (${(feeBreakdown.governmentRate * 100).toFixed(
-              1
-            )}%) : ${selectedCurrency.sign} ${feeBreakdown.governmentTax}`}
+            {`• القيمة الثابتة : ${feeBreakdown.formattedFixed}`}
           </ThemedText>
 
           <ThemedText
@@ -418,6 +402,115 @@ function TransactionFormComponent({
           </View>
         )}
 
+        {/* Transaction pricing */}
+        <ThemedText type="subtitle" weight="bold">
+          تسعيرة المعاملة
+        </ThemedText>
+        <View
+          style={{ flexDirection: "row", gap: 10, justifyContent: "center" }}
+        >
+          <Controller
+            name="price.operationCostPercent"
+            control={control}
+            render={({
+              field: { value, onChange, onBlur },
+              fieldState: { error },
+            }) => (
+              <View
+                style={{
+                  width: "50%",
+                  backgroundColor: hexToRgba(palette.accent, 0.1),
+                  padding: 10,
+                  borderRadius: 15,
+                  borderColor: palette.accent,
+                  borderWidth: value > 0 ? 1.5 : 0,
+                }}
+              >
+                <ThemedText
+                  weight="medium"
+                  style={{
+                    textAlign: "center",
+                    marginVertical: 10,
+                    color: palette.accent,
+                  }}
+                >
+                  نسبة مائويّة
+                </ThemedText>
+                <View style={{ flexDirection: "row", gap: 5 }}>
+                  <ThemedText
+                    type="xl"
+                    weight="bold"
+                    style={{
+                      verticalAlign: "middle",
+                      color: palette.accent,
+                    }}
+                  >
+                    %
+                  </ThemedText>
+                  <ThemedTextInput
+                    value={value?.toString() || undefined}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="numeric"
+                    error={error?.message}
+                    containerStyle={{ width: "85%" }}
+                  />
+                </View>
+              </View>
+            )}
+          />
+          <Controller
+            name="price.operationCostFixed"
+            control={control}
+            render={({
+              field: { value, onChange, onBlur },
+              fieldState: { error },
+            }) => (
+              <View
+                style={{
+                  width: "50%",
+                  backgroundColor: hexToRgba(palette.accent, 0.1),
+                  padding: 10,
+                  borderRadius: 15,
+                  borderColor: palette.accent,
+                  borderWidth: value > 0 ? 1.5 : 0,
+                }}
+              >
+                <ThemedText
+                  weight="medium"
+                  style={{
+                    textAlign: "center",
+                    marginVertical: 10,
+                    color: palette.accent,
+                  }}
+                >
+                  قيمة ثابتة
+                </ThemedText>
+
+                <View style={{ flexDirection: "row", gap: 5 }}>
+                  <ThemedText
+                    weight="medium"
+                    style={{
+                      verticalAlign: "middle",
+                      color: palette.accent,
+                    }}
+                  >
+                    {selectedCurrency?.sign || "USD"}
+                  </ThemedText>
+                  <ThemedTextInput
+                    value={value?.toString() || undefined}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="numeric"
+                    error={error?.message}
+                    containerStyle={{ width: "75%" }}
+                  />
+                </View>
+              </View>
+            )}
+          />
+        </View>
+
         {/* Transaction fee display */}
         {selectedCurrency && defaultCurrency && renderFeeBreakdown()}
 
@@ -515,6 +608,8 @@ export default function AddTransactionScreen() {
           selectedCurrency: undefined,
           isPaidFull: true,
           firstInstallment: undefined,
+          operationCostFixed: 0,
+          operationCostPercent: 0,
         },
       },
     });
