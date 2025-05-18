@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import { calculateTransactionFees } from "@/services/transactions";
 import {
   Currency,
   Transaction,
@@ -340,8 +339,11 @@ export function useTransactions(): UseTransactionsHookReturnType {
       };
     }
     const usdAmount = data.price.totalPrice * selectedCurrency.to_dollar_rate; // calculated based on chosen currency
-    const { governmentTax, operationCost } =
-      calculateTransactionFees(usdAmount);
+    // const { governmentTax, operationCost } =
+    //   calculateTransactionFees(usdAmount);
+    const opFixedCost = data.price.operationCostFixed
+    const opPercentCost = data.price.operationCostPercent / 100
+    const opCost = (data.price.totalPrice * opPercentCost) + opFixedCost // in selected currency
     const { data: trxData, error: trxErr } = await supabase
       .from("transactions")
       .insert({
@@ -357,12 +359,12 @@ export function useTransactions(): UseTransactionsHookReturnType {
         // calculate fees
         // these calculations should happen at a server level to be secure and can't be modified. or at database trigger level
         // due to time constraints we implemented it here but will be moved in the future
-        operation_cost_usd: operationCost, // consts are returned in USD by default
-        operation_cost_original:
-          operationCost * (1 / selectedCurrency.to_dollar_rate),
-        operation_tax_usd: governmentTax,
-        operation_tax_original:
-          governmentTax * (1 / selectedCurrency.to_dollar_rate),
+        operation_cost_usd: opCost * selectedCurrency.to_dollar_rate,
+        operation_cost_original: opCost,
+price_percent_rate: opPercentCost,
+price_fixed_rate: opFixedCost,
+        operation_tax_usd: 0,
+        operation_tax_original: 0
       })
       .select(
         `
