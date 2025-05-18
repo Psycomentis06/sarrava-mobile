@@ -2,7 +2,7 @@
  * Functions related working with transactions
  */
 
-import { Currency } from "@/utils/models";
+import { Currency, Transaction } from "@/utils/models";
 
 export enum TransactionPricingTierFeeType {
   FIXED = "fixed",
@@ -97,4 +97,218 @@ export function calculateTransactionFees(amount: number) {
     tier,
     governmentRate: GOVERNMENT_TAX_RATE,
   };
+}
+
+export function generateTransactionHTML(trx: Transaction, id: string): string {
+  const formattedDate = new Date(trx.created_at).toLocaleString();
+
+const receiver = `
+  <div class="contact">
+    <div style="font-weight: 500;">${trx.receiver?.firstname} ${trx.receiver?.lastname}</div>
+    <div>${trx.receiver?.phone ?? ""}</div>
+    <div>${trx.receiver?.email ?? ""}</div>
+    <div>${trx.receiver?.address ?? ""}</div>
+  </div>
+`;
+
+const sender = `
+  <div class="contact">
+    <div>${trx.sender?.firstname} ${trx.sender?.lastname}</div>
+    <div>${trx.sender?.phone ?? ""}</div>
+    <div>${trx.sender?.email ?? ""}</div>
+    <div>${trx.sender?.address ?? ""}</div>
+  </div>
+`;
+
+  const fullAmountUSD = Math.round(trx.amount_usd);
+  const fullAmountOriginal = Math.round(trx.original_amount);
+  const currencySign = trx.currency.sign;
+
+  const firstInstallmentUSD = Math.round(
+    (trx.first_installment ?? 0) * trx.exchange_rate
+  );
+  const firstInstallmentOriginal = Math.round(trx.first_installment ?? 0);
+
+  const remainingUSD = Math.round(
+    trx.amount_usd - (trx.first_installment ?? 0) * trx.exchange_rate
+  );
+  const remainingOriginal = Math.round(
+    trx.original_amount - (trx.first_installment ?? 0)
+  );
+
+  const extraCostUSD =
+    Math.round((trx.operation_cost_usd + trx.operation_tax_usd) * 100) / 100;
+  const extraCostOriginal =
+    Math.round(
+      (trx.operation_cost_original + trx.operation_tax_original) * 100
+    ) / 100;
+
+  const exchangeSVG = `
+    <svg class="exchange-icon" viewBox="0 0 48 24" fill="none">
+      <path fill="#444" fill-rule="evenodd" d="m13.414 19.172 6-6 1.414 1.414L12.414 23 4 14.586l1.414-1.414 6 6V1.586h2v17.586Z" clip-rule="evenodd"/>
+      <path fill="#444" fill-rule="evenodd" d="m34.586 4.828-6 6-1.414-1.414L35.586 1 44 9.414l-1.414 1.414-6-6v17.586h-2V4.828Z" clip-rule="evenodd"/>
+    </svg>
+  `;
+
+  return `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تفاصيل المعاملة</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #fff;
+      padding: 10px;
+      direction: rtl;
+    }
+    .contact {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      max-width: 800px;
+      margin: auto;
+      box-shadow: 0 0 3px rgba(0,0,0,0.1);
+    }
+    .row {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    .label {
+      width: 30%;
+      font-weight: bold;
+      color: #3628B7;
+    }
+    .value {
+      width: 70%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .value-content {
+      display: flex;
+      flex-direction: column;
+    }
+    .usd {
+      color: #3628B7;
+      font-size: 18px;
+    }
+    .original {
+      color: #00897B;
+    }
+    .error {
+      color: #E53935;
+    }
+    .separator {
+      border-top: 1px dashed rgba(0,0,0,0.3);
+      margin: 20px 0;
+    }
+    .pin {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 15px;
+    }
+    .pin input {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100px;
+      text-align: center;
+    }
+    .exchange-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>ملخص المعاملة</h2>
+
+    <div class="row"><div class="label">عدد المعاملة</div><div class="value">#${id}</div></div>
+    <div class="row"><div class="label">بتاريخ :</div><div class="value">${formattedDate}</div></div>
+
+    <div class="row"><div class="label">المستفيد</div><div class="value">${receiver}</div></div>
+    <div class="row"><div class="label">المرسل</div><div class="value">${sender}</div></div>
+
+    <div class="separator"></div>
+
+    <div class="row">
+      <div class="label">المبلغ الجملي</div>
+      <div class="value">
+        <div class="value-content">
+          <div class="usd">${fullAmountUSD} USD</div>
+          <div class="original">${fullAmountOriginal} ${currencySign}</div>
+        </div>
+        ${exchangeSVG}
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">${
+        trx.is_paid_full
+          ? "تم أستلام المبلغ كاملا"
+          : "تم أستلام القسط الأوّل بقيمة"
+      }</div>
+      <div class="value">
+        <div class="value-content">
+          <div class="usd">${
+            trx.is_paid_full ? fullAmountUSD : firstInstallmentUSD
+          } USD</div>
+          <div class="original">${
+            trx.is_paid_full ? fullAmountOriginal : firstInstallmentOriginal
+          } ${currencySign}</div>
+        </div>
+        ${exchangeSVG}
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">المبلغ المتبقي</div>
+      <div class="value">
+        <div class="value-content">
+          <div class="usd error">${
+            trx.is_paid_full ? "0" : remainingUSD
+          } USD</div>
+          <div class="original">${
+            trx.is_paid_full
+              ? `0 ${currencySign}`
+              : `${remainingOriginal} ${currencySign}`
+          }</div>
+        </div>
+        ${exchangeSVG}
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="label">سعر المعاملة (سعر أضافي)</div>
+      <div class="value">
+        <div class="value-content">
+          <div class="usd error">${extraCostUSD} USD</div>
+          <div class="original">${extraCostOriginal} ${currencySign}</div>
+        </div>
+        ${exchangeSVG}
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="pin">
+      <div class="label">الرمز السرّي للمعاملة</div>
+      <!--<input type="text" value="${trx.pin_code ?? ""}" readonly />-->
+      <input class="value" type="text" value="*️⃣*️⃣*️⃣*️⃣*️⃣*️⃣" readonly />
+    </div>
+  </div>
+</body>
+</html>
+`;
 }

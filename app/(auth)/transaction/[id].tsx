@@ -2,16 +2,86 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useUserProfile } from "@/contexts/profile";
+import { useCurrencies } from "@/hooks/useCurrencies";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import { generateTransactionHTML } from "@/services/transactions";
 import { Transaction } from "@/utils/models";
+import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
+import * as Print from "expo-print";
 import { Stack, useLocalSearchParams } from "expo-router";
-import React from "react";
+import * as Share from "expo-sharing";
+import React, { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import Toast from "react-native-root-toast";
 
 export default function TransactionDetailsScreen() {
   const palette = useThemePalette();
   const { id, transaction } = useLocalSearchParams();
   const tObj = JSON.parse(transaction as string) as Transaction;
+  const { currencies } = useCurrencies();
+  const { profile } = useUserProfile();
+  const defaultCurrency = { sign: "USD", name_ar: "الدّولار الأمريكي" };
+  const displayCurrency = React.useMemo(() => {
+    if (!profile?.currency || !currencies) return defaultCurrency;
+    return currencies.find((c) => c.id === profile.currency) ?? defaultCurrency;
+  }, [profile?.currency, currencies]);
+  const hideProfileCurrency = tObj.currency.sign === displayCurrency.sign;
+  const [permissionResponse, requestPermission] = MediaLibrary.usePermissions();
+  const [isSaveTransactionFileLoading, setIsSaveTransactionFileLoading] =
+    useState(false);
+
+  const handleDownload = async (html: string, fileName = "transaction.pdf") => {
+    setIsSaveTransactionFileLoading(true);
+    Toast.show("جاري حفظ الملفّ...", { visible: isSaveTransactionFileLoading });
+    try {
+      const fullFileName = fileName.endsWith(".pdf")
+        ? fileName
+        : `${fileName}.pdf`;
+
+      // Step 1: Generate PDF from HTML
+      const { uri } = await Print.printToFileAsync({
+        html,
+      });
+
+      // Step 2: Move it to app cache with correct filename (optional but good UX)
+      const newPath = `${FileSystem.cacheDirectory}${fullFileName}`;
+      await FileSystem.moveAsync({
+        from: uri,
+        to: newPath,
+      });
+
+      // Step 3: Request media library permissions
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        setIsSaveTransactionFileLoading(false);
+        Toast.show("لايمكن حفظ الملفّ. لا تمتلك الصّلاحيات اللاّزمة", {
+          duration: Toast.durations.LONG,
+        });
+        return;
+      }
+
+      // Step 4: Save to Downloads folder
+      const asset = await MediaLibrary.createAssetAsync(newPath);
+      const album = await MediaLibrary.getAlbumAsync("Download");
+      if (album) {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      } else {
+        await MediaLibrary.createAlbumAsync("Download", asset, false);
+      }
+      setIsSaveTransactionFileLoading(false);
+      Toast.show("تمّ حفظ الملفّ بنجاح ✔", { duration: Toast.durations.LONG });
+    } catch (error) {
+      console.error("Error saving PDF:", error);
+      Toast.show("حدث خطأ أثناء حفظ الملف ❌", {
+        duration: Toast.durations.LONG,
+      });
+    } finally {
+      setIsSaveTransactionFileLoading(false);
+    }
+  };
+
   return (
     <>
       <Stack.Screen options={{ title: "تفاصيل المعاملة" }} />
@@ -30,13 +100,38 @@ export default function TransactionDetailsScreen() {
               <ThemedText type="l" weight="bold">
                 ملخص المعاملة
               </ThemedText>
-              <Pressable android_ripple={{ color: "rgba(0,0,0,0.26)" }}>
-                <IconSymbol
-                  name="square.and.arrow.down"
-                  size={24}
-                  color={palette.accent}
-                />
-              </Pressable>
+              <View style={{ flexDirection: "row", gap: 20 }}>
+                <Pressable
+                  android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+                  onPress={async () => {
+                    const html = generateTransactionHTML(tObj, id.toString());
+                    await handleDownload(html, `mvp-transaction-${id}.pdf`);
+                  }}
+                >
+                  <IconSymbol
+                    name="square.and.arrow.down"
+                    size={24}
+                    color={palette.accent}
+                  />
+                </Pressable>
+                <Pressable
+                  android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+                  onPress={async () => {
+                    const html = generateTransactionHTML(tObj, id.toString());
+                    const { uri } = await Print.printToFileAsync({ html });
+                    await Share.shareAsync(uri, {
+                      UTI: ".pdf",
+                      mimeType: "application/pdf",
+                    });
+                  }}
+                >
+                  <IconSymbol
+                    name="arrowshape.turn.up.right.fill"
+                    size={24}
+                    color={palette.accent}
+                  />
+                </Pressable>
+              </View>
             </View>
             <View
               style={{
@@ -127,7 +222,7 @@ export default function TransactionDetailsScreen() {
                     type="l"
                     style={{ color: palette.accent, textAlign: "center" }}
                   >
-                    {`${Math.round(tObj.amount_usd)} USD`}
+                    {`${Math.round(tObj.amount_usd)} ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
@@ -164,10 +259,10 @@ export default function TransactionDetailsScreen() {
                     style={{ color: palette.accent, textAlign: "center" }}
                   >
                     {tObj.is_paid_full
-                      ? `${Math.round(tObj.amount_usd)} USD`
+                      ? `${Math.round(tObj.amount_usd)} ${displayCurrency.sign}`
                       : `${Math.round(
                           (tObj.first_installment ?? 0) * tObj.exchange_rate
-                        )} USD`}
+                        )} ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
@@ -211,11 +306,11 @@ export default function TransactionDetailsScreen() {
                     style={{ color: palette.error, textAlign: "center" }}
                   >
                     {tObj.is_paid_full
-                      ? "0"
+                      ? `0 ${displayCurrency.sign}`
                       : `${Math.round(
                           tObj.amount_usd -
-                            ((tObj.first_installment ?? 0) * tObj.exchange_rate)
-                        )} USD`}
+                            (tObj.first_installment ?? 0) * tObj.exchange_rate
+                        )} ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
@@ -235,7 +330,6 @@ export default function TransactionDetailsScreen() {
               </View>
             </View>
 
-
             <View
               style={{
                 flexDirection: "row",
@@ -244,7 +338,7 @@ export default function TransactionDetailsScreen() {
               }}
             >
               <ThemedText weight="medium" style={{ color: palette.accent }}>
-              سعر المعاملة (سعر أضافي) :
+                سعر المعاملة (سعر أضافي) :
               </ThemedText>
               <View
                 style={{
@@ -257,12 +351,22 @@ export default function TransactionDetailsScreen() {
                     type="l"
                     style={{ color: palette.error, textAlign: "center" }}
                   >
-                    {`${Math.round((tObj.operation_cost_usd + tObj.operation_tax_usd) * 100) / 100} USD`}
+                    {`${
+                      Math.round(
+                        (tObj.operation_cost_usd + tObj.operation_tax_usd) * 100
+                      ) / 100
+                    } ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
                   >
-                    {`${Math.round((tObj.operation_cost_original + tObj.operation_tax_original) * 100) / 100} ${tObj.currency.sign}`}
+                    {`${
+                      Math.round(
+                        (tObj.operation_cost_original +
+                          tObj.operation_tax_original) *
+                          100
+                      ) / 100
+                    } ${tObj.currency.sign}`}
                   </ThemedText>
                 </View>
                 <IconSymbol
@@ -287,7 +391,10 @@ export default function TransactionDetailsScreen() {
               <ThemedText style={{ color: palette.accent, width: "60%" }}>
                 الرمز السرّي للمعاملة
               </ThemedText>
-              <ThemedTextInput value={tObj.pin_code?.toString()} keyboardType="numeric" />
+              <ThemedTextInput
+                value={tObj.pin_code?.toString()}
+                keyboardType="numeric"
+              />
             </View>
           </View>
         </ThemedView>

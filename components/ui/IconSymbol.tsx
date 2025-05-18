@@ -33,7 +33,8 @@ const MAPPING = {
   "chevron.up": "keyboard-arrow-up",
   "archivebox.fill": "archive",
   "yensign.circle": "price-change",
-  "building": "apartment"
+  "building": "apartment",
+  "arrowshape.turn.up.right.fill": "share"
 } as Partial<
   Record<
     import("expo-symbols").SymbolViewProps["name"],
