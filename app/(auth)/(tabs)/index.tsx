@@ -8,13 +8,15 @@ import ReciptTax from "@/components/svg/ReciptTax";
 import ReportBox from "@/components/svg/ReportBox";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { CurrencySymbols } from "@/constants/CurrencySymbols";
 import { useUserProfile } from "@/contexts/profile";
 import { useAgentAnalytics } from "@/hooks/useAnalytics";
+import { useCurrencies } from "@/hooks/useCurrencies";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { hexToRgba } from "@/utils/colors";
-import { AgentTransactionsAnalytics } from "@/utils/models";
+import { AgentTransactionsAnalytics, Currency } from "@/utils/models";
 import { Link, useNavigation } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -59,7 +61,7 @@ export default function HomeScreen() {
         ]}
       >
         <Animated.Text style={[styles.headerText, { opacity: textOpacity }]}>
-          مرحبا, {`${profile?.firstname} ${profile?.lastname}`}
+          مرحبا, {`${profile?.firstname || ""} ${profile?.lastname || ""}`}
         </Animated.Text>
         <Pressable>
           <IconSymbol name="bell" size={24} color="white" />
@@ -205,6 +207,32 @@ const AnalyticsCards = ({
   initialVisibleCards,
 }: AnalyticsCardsComponentProps) => {
   const [showAllCards, setShowAllCards] = useState(false);
+  const { currencies } = useCurrencies();
+  const { profile } = useUserProfile();
+  const [profileCurrency, setProfileCurrency] = useState<Currency>();
+
+  useEffect(() => {
+    if (profile?.currency) {
+      setProfileCurrency(currencies.find((c) => c.id === profile?.currency));
+    }
+  }, [profile, currencies]);
+
+  // if user profile have a selected currency convert values to it
+  // otherwise default to USD
+  const getProfileCurrencyAwareAnalyticLabel = (
+    value: number,
+    percent: boolean = false
+  ): string => {
+    if (percent) {
+      return `${value}%`;
+    }
+    if (profileCurrency) {
+      return `${Math.round(
+        (value ?? 0) / profileCurrency.to_dollar_rate
+      )} ${CurrencySymbols.get(profileCurrency.sign)}`;
+    }
+    return `${Math.round(value ?? 0)} $`;
+  };
 
   // Define all analytics cards with their properties
   const analyticsCards = [
@@ -212,38 +240,40 @@ const AnalyticsCards = ({
       id: "total_transactions_amount",
       icon: <ArrowsExchange />,
       label: "أجمالي المعاملات",
-      value: `${Math.round(transactionsAnalytics?.confirmed_usd_amount ?? 0)}$`,
+      value: `${getProfileCurrencyAwareAnalyticLabel(
+        transactionsAnalytics?.confirmed_usd_amount ?? 0
+      )}`,
     },
     {
       id: "expected_transactions",
       icon: <Money2 />,
       label: "أجمالي المعاملات المتوقّعة",
-      value: `${Math.round(
+      value: `${getProfileCurrencyAwareAnalyticLabel(
         (transactionsAnalytics?.pending_usd_amount ?? 0) +
           (transactionsAnalytics?.confirmed_usd_amount ?? 0)
-      )}$`,
+      )}`,
     },
     {
       id: "total_earnings",
       icon: <Money />,
       label: "أجمالي الإرادات",
-      value: `${Math.round(
+      value: `${getProfileCurrencyAwareAnalyticLabel(
         transactionsAnalytics?.confirmed_earnings_usd ?? 0
-      )}$`,
+      )}`,
     },
     {
       id: "total_fees",
       icon: <ReciptTax />,
       label: "أجمالي الرسوم",
-      value: `${Math.round(
+      value: `${getProfileCurrencyAwareAnalyticLabel(
         transactionsAnalytics?.confirmed_tax_fees_usd ?? 0
-      )}$`,
+      )}`,
     },
     {
       id: "expected_earnings",
       icon: <Money />,
       label: "أجمالي الإرادات المتوقّعة",
-      value: `${Math.round(
+      value: `${getProfileCurrencyAwareAnalyticLabel(
         (transactionsAnalytics?.pending_earnings_usd ?? 0) +
           (transactionsAnalytics?.confirmed_earnings_usd ?? 0)
       )}`,
@@ -252,7 +282,7 @@ const AnalyticsCards = ({
       id: "expected_fees",
       icon: <Money />,
       label: "أجمالي الرسوم المتوقعة",
-      value: `${Math.round(
+      value: `${getProfileCurrencyAwareAnalyticLabel(
         (transactionsAnalytics?.pending_tax_fees_usd ?? 0) +
           (transactionsAnalytics?.confirmed_tax_fees_usd ?? 0)
       )}`,
@@ -261,13 +291,15 @@ const AnalyticsCards = ({
       id: "transactions_count",
       icon: <Money2 />,
       label: "عدد المعاملات",
-      value: transactionsAnalytics?.total_transactions ?? 0,
+      value: `${getProfileCurrencyAwareAnalyticLabel(
+        transactionsAnalytics?.total_transactions ?? 0
+      )}`,
     },
     {
       id: "confirmed_transactions",
       icon: <ReciptTax />,
       label: "المعاملات المكتملة",
-      value: `${Math.round(
+      value: `${getProfileCurrencyAwareAnalyticLabel(
         transactionsAnalytics?.confirmed_transactions ?? 0
       )}`,
     },
@@ -275,13 +307,18 @@ const AnalyticsCards = ({
       id: "pending_transactions",
       icon: <Money2 />,
       label: "المعاملات المعلقة",
-      value: `${transactionsAnalytics?.pending_transactions ?? 0}`,
+      value: `${getProfileCurrencyAwareAnalyticLabel(
+        transactionsAnalytics?.pending_transactions ?? 0
+      )}`,
     },
     {
       id: "success_rate",
       icon: <Money2 />,
       label: "معدل النجاح",
-      value: `${Math.round(transactionsAnalytics?.success_rate_percent ?? 0)}%`,
+      value: `${getProfileCurrencyAwareAnalyticLabel(
+        transactionsAnalytics?.success_rate_percent ?? 0,
+        true
+      )}`,
     },
   ];
 

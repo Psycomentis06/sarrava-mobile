@@ -55,12 +55,22 @@ export type UserProfile = {
   currency?: number | null;
   department?: AgentDepartment;
   department_id?: string;
-  department_role?: DepartmentRole
+  department_role?: DepartmentRole;
 };
 
+export type TransactionInternalMetadata = {
+  localId?: string;
+  originalId?: string;
+  syncStatus: "PENDING" | "SYNCED" | "ERROR";
+  errorMessage?: string;
+  createdOffline?: boolean;
+  operationType?: "UPDATE_STATUS" | "ADD_NEW_TRANSACTION";
+  lastSyncAttempt?: number | string;
+};
 export type Transaction = {
   id: string; // UUID
   currency: Currency;
+  currency_id: number;
   amount_usd: number; // numeric
   original_amount: number; // numeric
   operation_cost_usd: number; // calculated between price percent_rate and price_fixed_rate
@@ -89,7 +99,8 @@ export type Transaction = {
     phone: string;
     address: string;
   } | null; // jsonb, optional
-  pin_code: number; // integer
+  pin_code?: number; // integer
+  __internal?: TransactionInternalMetadata;
 };
 
 export enum TransactionStatus {
@@ -99,9 +110,7 @@ export enum TransactionStatus {
   FAILED = "FAILED",
 }
 
-export type AgentTransactionsAnalytics = {
-  agent_id?: string;
-  agent?: UserProfile;
+export type BaseTransactionsAnalytics = {
   total_transactions: number;
   confirmed_transactions: number;
   pending_transactions: number;
@@ -123,6 +132,18 @@ export type AgentTransactionsAnalytics = {
   current_month_confirmed_usd_amount: number;
   current_month_earnings_usd: number;
 };
+
+export type AgentTransactionsAnalytics = BaseTransactionsAnalytics & {
+  agent_id?: string;
+  agent?: UserProfile;
+};
+
+export type DepartmentTransactionsAnalytics = BaseTransactionsAnalytics & {
+  department_id?: string;
+  department?: AgentDepartment;
+};
+
+export type TransactionsAnalytics = AgentTransactionsAnalytics | DepartmentTransactionsAnalytics
 
 export type Report = {
   id: string; // UUID
