@@ -12,16 +12,22 @@ import { CurrencySymbols } from "@/constants/CurrencySymbols";
 import { useUserProfile } from "@/contexts/profile";
 import { useAgentAnalytics } from "@/hooks/useAnalytics";
 import { useCurrencies } from "@/hooks/useCurrencies";
+import { useDepartmentAnalytics } from "@/hooks/useDepartmentAnalytics";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { hexToRgba } from "@/utils/colors";
-import { AgentTransactionsAnalytics, Currency } from "@/utils/models";
+import {
+  BaseTransactionsAnalytics,
+  Currency,
+  DepartmentTransactionsAnalytics,
+} from "@/utils/models";
 import { Link, useNavigation } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import BouncyCheckbox from "react-native-bouncy-checkbox";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type AnalyticsCardsComponentProps = {
-  transactionsAnalytics: AgentTransactionsAnalytics | null;
+  analytics: BaseTransactionsAnalytics | null;
   initialVisibleCards: number;
 };
 
@@ -32,12 +38,26 @@ type AnalyticsCardComponentProps = {
 };
 
 export default function HomeScreen() {
+  const palette = useThemePalette();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
   const { analytics: transactionsAnalytics, isLoading: isAnalyticsLoading } =
     useAgentAnalytics();
+  const { analytics: allDepartmentAnalytics } = useDepartmentAnalytics();
+  const [departmentAnalytics, setDepartmentAnalytics] =
+    useState<DepartmentTransactionsAnalytics | null>(null);
   const { profile } = useUserProfile();
+  const [isDepartmentStatsSelected, setIsDepartmentStatsSelected] =
+    useState<boolean>(false);
+
+  useEffect(() => {
+    setDepartmentAnalytics(
+      allDepartmentAnalytics.find(
+        (d) => d.department_id === profile?.department_id
+      ) || null
+    );
+  }, [departmentAnalytics, profile]);
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 200],
@@ -78,10 +98,28 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
       >
         <ThemedView style={styles.container}>
+          {profile?.department_id && departmentAnalytics && (
+            <View style={{padding: 10}}>
+            <BouncyCheckbox
+              text="إحصائيات الفرع"
+              textStyle={{
+                textDecorationLine: "none",
+                color: palette.text,
+              }}
+              fillColor={palette.accent}
+              isChecked={isDepartmentStatsSelected}
+              onPress={(val) => setIsDepartmentStatsSelected(val)}
+            />
+</View>
+          )}
           {/* Overview Stats */}
           <View style={{ paddingTop: 40, paddingBottom: 20 }}>
             <AnalyticsCards
-              transactionsAnalytics={transactionsAnalytics}
+              analytics={
+                isDepartmentStatsSelected
+                  ? departmentAnalytics
+                  : transactionsAnalytics
+              }
               initialVisibleCards={4}
             />
           </View>
@@ -203,7 +241,7 @@ export default function HomeScreen() {
 
 // Analytics Cards Component
 const AnalyticsCards = ({
-  transactionsAnalytics,
+  analytics: transactionsAnalytics,
   initialVisibleCards,
 }: AnalyticsCardsComponentProps) => {
   const [showAllCards, setShowAllCards] = useState(false);
@@ -291,25 +329,19 @@ const AnalyticsCards = ({
       id: "transactions_count",
       icon: <Money2 />,
       label: "عدد المعاملات",
-      value: `${getProfileCurrencyAwareAnalyticLabel(
-        transactionsAnalytics?.total_transactions ?? 0
-      )}`,
+      value: `${transactionsAnalytics?.total_transactions ?? 0}`,
     },
     {
       id: "confirmed_transactions",
       icon: <ReciptTax />,
       label: "المعاملات المكتملة",
-      value: `${getProfileCurrencyAwareAnalyticLabel(
-        transactionsAnalytics?.confirmed_transactions ?? 0
-      )}`,
+      value: `${transactionsAnalytics?.confirmed_transactions ?? 0}`,
     },
     {
       id: "pending_transactions",
       icon: <Money2 />,
       label: "المعاملات المعلقة",
-      value: `${getProfileCurrencyAwareAnalyticLabel(
-        transactionsAnalytics?.pending_transactions ?? 0
-      )}`,
+      value: `${transactionsAnalytics?.pending_transactions ?? 0}`,
     },
     {
       id: "success_rate",
