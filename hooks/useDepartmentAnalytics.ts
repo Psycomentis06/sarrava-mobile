@@ -18,7 +18,7 @@ export function useDepartmentAnalytics() {
     try {
       if (isInternetReachable) {
         const { data, error } = await supabase
-          .from("transactions_agent_stats_view")
+          .from("transactions_department_stats_view")
           .select();
         if (error) {
           console.error("error fetching analytics", error);
