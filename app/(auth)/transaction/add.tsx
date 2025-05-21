@@ -3,9 +3,9 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { useUserProfile } from "@/contexts/profile";
+import { useCurrencies } from "@/hooks/useCurrencies";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { useTransactions } from "@/hooks/useTransactions";
-import { supabase } from "@/lib/supabase";
 import { getExchangeRate } from "@/services/transactions";
 import { hexToRgba } from "@/utils/colors";
 import { Currency } from "@/utils/models";
@@ -582,7 +582,7 @@ export default function AddTransactionScreen() {
   const palette = useThemePalette();
   const { profile } = useUserProfile();
   const router = useRouter();
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const {currencies, isLoading: isCurrenciesLoading} = useCurrencies()
   const [isAddLoading, setIsAddLoading] = useState(false);
   const { add } = useTransactions();
   const { control, formState, handleSubmit, watch, setValue } =
@@ -615,30 +615,13 @@ export default function AddTransactionScreen() {
     });
 
   useEffect(() => {
-    getCurrencies();
-  }, []);
-
-  const getCurrencies = async () => {
-    const { data, error } = await supabase
-      .from("currencies")
-      .select()
-      .order("sign", { ascending: true });
-
-    if (error) {
-      Alert.alert("خطأ", "هناك مشكل في تحميل العملات");
-      console.error(error);
-      return;
+    if (!isCurrenciesLoading) {
+      setValue("price.selectedCurrency", 
+        currencies.filter((c) => c.sign === 'USD')[0]
+        // set dollar as default
+      )
     }
-
-    if (data && data?.length > 0) {
-      const currData = data as Currency[];
-      setCurrencies(currData);
-      setValue(
-        "price.selectedCurrency",
-        currData.filter((c) => c.sign === "USD")[0]
-      ); // set dollar as the default
-    }
-  };
+  }, [isCurrenciesLoading]);
 
   const onSubmit = async (data: NewTransactionType) => {
     setIsAddLoading(true);
