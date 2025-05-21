@@ -60,6 +60,7 @@ export const CurrencySymbols = new Map([
   ["MAD", "\u200E.د.م"], // Moroccan Dirham
   ["TND", "\u200Eد.ت"], // Tunisian Dinar
   ["LYD", "\u200Eل.د"], // Libyan Dinar
+  ["MRU", "UM"], // Mauritanian Ouguiya
   ["XOF", "CFA"], // West African CFA Franc (8 countries)
   ["XAF", "FCFA"], // Central African CFA Franc (6 countries)
   ["NGN", "₦"], // Nigerian Naira
