@@ -22,7 +22,11 @@ export default function TransactionDetailsScreen() {
   const tObj = JSON.parse(transaction as string) as Transaction;
   const { currencies } = useCurrencies();
   const { profile } = useUserProfile();
-  const defaultCurrency = { sign: "USD", name_ar: "الدّولار الأمريكي" };
+  const defaultCurrency = {
+    sign: "USD",
+    name_ar: "الدّولار الأمريكي",
+    to_dollar_rate: 1,
+  };
   const displayCurrency = React.useMemo(() => {
     if (!profile?.currency || !currencies) return defaultCurrency;
     return currencies.find((c) => c.id === profile.currency) ?? defaultCurrency;
@@ -222,7 +226,9 @@ export default function TransactionDetailsScreen() {
                     type="l"
                     style={{ color: palette.accent, textAlign: "center" }}
                   >
-                    {`${Math.round(tObj.amount_usd)} ${displayCurrency.sign}`}
+                    {`${Math.round(
+                      (tObj.amount_usd ?? 0) / displayCurrency.to_dollar_rate
+                    )} ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
@@ -259,9 +265,13 @@ export default function TransactionDetailsScreen() {
                     style={{ color: palette.accent, textAlign: "center" }}
                   >
                     {tObj.is_paid_full
-                      ? `${Math.round(tObj.amount_usd)} ${displayCurrency.sign}`
+                      ? `${Math.round(
+                          (tObj.amount_usd ?? 0) /
+                            displayCurrency.to_dollar_rate
+                        )} ${displayCurrency.sign}`
                       : `${Math.round(
-                          (tObj.first_installment ?? 0) * tObj.exchange_rate
+                          ((tObj.first_installment ?? 0) * tObj.exchange_rate) /
+                            displayCurrency.to_dollar_rate
                         )} ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
@@ -308,8 +318,10 @@ export default function TransactionDetailsScreen() {
                     {tObj.is_paid_full
                       ? `0 ${displayCurrency.sign}`
                       : `${Math.round(
-                          tObj.amount_usd -
-                            (tObj.first_installment ?? 0) * tObj.exchange_rate
+                          (tObj.amount_usd -
+                            (tObj.first_installment ?? 0) *
+                              tObj.exchange_rate) /
+                            displayCurrency.to_dollar_rate
                         )} ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
@@ -352,9 +364,9 @@ export default function TransactionDetailsScreen() {
                     style={{ color: palette.error, textAlign: "center" }}
                   >
                     {`${
-                      Math.round(
-                        (tObj.operation_cost_usd + tObj.operation_tax_usd) * 100
-                      ) / 100
+                      Math.round((Math.round(
+                        ((tObj.operation_cost_usd ?? 0) * 100) 
+                      ) / 100) / displayCurrency.to_dollar_rate)
                     } ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
