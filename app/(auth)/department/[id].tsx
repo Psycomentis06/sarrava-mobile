@@ -173,7 +173,6 @@ function AgentsScene({ depAgents }: { depAgents: UserProfile[] }) {
                     />
                   )}
                   <View>
-                    S
                     <ThemedText
                       type="l"
                       weight="medium"
