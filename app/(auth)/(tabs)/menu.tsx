@@ -4,6 +4,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useSupabaseHasPermissions } from "@/hooks/useSupabaseHasPermissions";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, useNavigation } from "expo-router";
 import React from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
@@ -13,7 +14,8 @@ export default function MoreOptions() {
   const navigation = useNavigation();
   const { tint, text, error } = useThemePalette();
   const insets = useSafeAreaInsets();
-  const {hasPermission: hasAdminPermission, isLoading} = useSupabaseHasPermissions(['admin'])
+  const { hasPermission: hasAdminPermission, isLoading } =
+    useSupabaseHasPermissions(["admin"]);
   const styles = StyleSheet.create({
     mainTitle: {
       textAlign: "center",
@@ -32,13 +34,44 @@ export default function MoreOptions() {
   });
 
   const signOut = async () => {
-    console.log("signout");
-
-    const { error } = await supabase.auth.signOut({ scope: "local" });
-    if (error) {
-      Alert.alert("مشكل حدث أثناء تسجيل الخروج", error.message);
-    }
-    navigation.navigate("auth/login" as never);
+    Alert.alert(
+      "تأكيد تسجيل الخروج",
+      "⚠️ عند تسجيل الخروج:\n\n" +
+        "• سيتم حذف جميع بياناتك المحفوظة على هذا الجهاز\n" +
+        "• ستُحذف جميع المعاملات المضافة في وضع عدم الاتصال\n\n" +
+        "لحفظ المعاملات غير مسجّلة على الخادم، يرجى:\n" +
+        "1. الاتصال بالإنترنت\n" +
+        "2. الانتظار حتى اكتمال المزامنة\n" +
+        "3. ثم تسجيل الخروج",
+      [
+        {
+          text: "إلغاء",
+          style: "cancel",
+          onPress: () => {},
+        },
+        {
+          text: "تسجيل الخروج",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error } = await supabase.auth.signOut({ scope: "local" });
+              if (error) {
+                Alert.alert("مشكل حدث أثناء تسجيل الخروج", error.message);
+                console.error(error);
+                return;
+              }
+              // Clear all cache to prevent data leakage
+              await AsyncStorage.multiRemove(await AsyncStorage.getAllKeys());
+              navigation.navigate("auth/login" as never);
+            } catch (err) {
+              Alert.alert("خطأ", "حدث خطأ أثناء محاولة تسجيل الخروج");
+              console.error(err);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
@@ -51,7 +84,13 @@ export default function MoreOptions() {
       }}
     >
       <View>
-        <Link href="/(auth)/(tabs)/reports" asChild style={{display: !isLoading && hasAdminPermission ? 'flex' : 'none'}}>
+        <Link
+          href="/(auth)/(tabs)/reports"
+          asChild
+          style={{
+            display: !isLoading && hasAdminPermission ? "flex" : "none",
+          }}
+        >
           <Pressable
             style={styles.menuItem}
             android_ripple={{ color: "rgba(0,0,0,0.26)" }}
@@ -66,7 +105,13 @@ export default function MoreOptions() {
           </Pressable>
         </Link>
 
-        <Link href="/(auth)/(tabs)/department" asChild style={{display: !isLoading && hasAdminPermission ? 'flex' : 'none'}}>
+        <Link
+          href="/(auth)/(tabs)/department"
+          asChild
+          style={{
+            display: !isLoading && hasAdminPermission ? "flex" : "none",
+          }}
+        >
           <Pressable
             style={styles.menuItem}
             android_ripple={{ color: "rgba(0,0,0,0.26)" }}
@@ -81,7 +126,13 @@ export default function MoreOptions() {
           </Pressable>
         </Link>
 
-        <Link href="/(auth)/(tabs)/currency_rates" asChild style={{display: !isLoading && hasAdminPermission ? 'flex' : 'none'}}>
+        <Link
+          href="/(auth)/(tabs)/currency_rates"
+          asChild
+          style={{
+            display: !isLoading && hasAdminPermission ? "flex" : "none",
+          }}
+        >
           <Pressable
             style={styles.menuItem}
             android_ripple={{ color: "rgba(0,0,0,0.26)" }}
