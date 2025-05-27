@@ -58,15 +58,6 @@ export type UserProfile = {
   department_role?: DepartmentRole;
 };
 
-export type TransactionInternalMetadata = {
-  localId?: string;
-  originalId?: string;
-  syncStatus: "PENDING" | "SYNCED" | "ERROR";
-  errorMessage?: string;
-  createdOffline?: boolean;
-  operationType?: "UPDATE_STATUS" | "ADD_NEW_TRANSACTION";
-  lastSyncAttempt?: number | string;
-};
 export type Transaction = {
   id: string; // UUID
   currency: Currency;
@@ -100,7 +91,20 @@ export type Transaction = {
     address: string;
   } | null; // jsonb, optional
   pin_code?: number; // integer
-  __internal?: TransactionInternalMetadata;
+};
+
+export type InternalTransaction = Transaction & {
+  __internal?: {
+    localId?: string; // Unique ID for offline transactions before they get a Supabase ID
+    syncStatus?: "PENDING" | "SYNCED" | "ERROR" | "FAILED_PERMANENTLY"; // Status of sync
+    operationType?: "ADD" | "UPDATE_STATUS"; // Type of operation for queued items
+    originalId?: string; // Original Supabase ID for update operations
+    errorMessage?: string; // Error message if sync failed
+    lastAttemptTimestamp?: string; // Timestamp of last sync attempt for backoff
+    retryCount?: number; // Number of automatic retry attempts made
+    createdOffline?: boolean; // Flag if transaction was created offline
+    syncedAt?: string; // Timestamp when transaction was successfully synced to Supabase
+  };
 };
 
 export enum TransactionStatus {

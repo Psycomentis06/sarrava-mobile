@@ -7,6 +7,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { useTransactions } from "@/hooks/useTransactions";
+import { hexToRgba } from "@/utils/colors";
 import { Transaction, TransactionStatus } from "@/utils/models";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
@@ -363,7 +364,9 @@ export default function TransactionScreen() {
                     <Pressable
                       style={[
                         styles.transactionsListItem,
-                        { backgroundColor: palette.tint },
+                        { backgroundColor: i.item?.__internal?.syncStatus === 'PENDING' ? hexToRgba(palette.accent, 0.2) : (
+                          i.item?.__internal?.syncStatus === 'ERROR' ? hexToRgba(palette.error, 0.2) : palette.tint
+                        ) },
                       ]}
                       android_ripple={{
                         color: "rgba(0,0,0,0.26)",
