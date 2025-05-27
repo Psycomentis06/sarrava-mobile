@@ -106,6 +106,27 @@ export default function MoreOptions() {
         </Link>
 
         <Link
+          href="/(auth)/(tabs)/my_departments"
+          asChild
+          style={{
+            display: !isLoading && hasAdminPermission ? "flex" : "none",
+          }}
+        >
+          <Pressable
+            style={styles.menuItem}
+            android_ripple={{ color: "rgba(0,0,0,0.26)" }}
+          >
+            <IconSymbol
+              size={24}
+              name="building"
+              color={text}
+              style={{ marginHorizontal: 5 }}
+            />
+            <ThemedText style={{ marginLeft: 5 }}>فروعي</ThemedText>
+          </Pressable>
+        </Link>
+
+        <Link
           href="/(auth)/(tabs)/department"
           asChild
           style={{

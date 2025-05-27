@@ -103,6 +103,20 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="my_departments"
+        options={{
+          title: "فروعي",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="building" color={color} />
+          ),
+          href:
+            !isLoading && hasAdminPermission
+              ? null
+              : "/(auth)/(tabs)/my_departments",
+        }}
+      />
+
+      <Tabs.Screen
         name="menu"
         options={{
           title: "المزيد",
