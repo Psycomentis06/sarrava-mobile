@@ -675,7 +675,7 @@ export default function AddTransactionScreen() {
               >
                 أسعار العملات
               </Link>{" "}
-              لاختيار العملة المفضلة.
+              لاختيار العملة المناسبة لحسابك
             </ThemedText>
           ) : null}
           <UserFormComponent
