@@ -1,10 +1,13 @@
+import { ThemedButton } from "@/components/ThemedButton";
 import { ThemedText } from "@/components/ThemedText";
 import Separator from "@/components/ui/Separator";
+import { useDepartments } from "@/hooks/useDepartments";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { UserProfile } from "@/utils/models";
+import { getArabicDepartmentRole } from "@/services/departments";
+import { AgentDepartment, DepartmentRole, UserProfile } from "@/utils/models";
 import { Link, Stack, useLocalSearchParams } from "expo-router";
-import React from "react";
-import { Image, TextStyle, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, Image, TextStyle, View } from "react-native";
 
 type TitleValueItemComponentProps = {
   title: string;
@@ -26,14 +29,12 @@ function TitleValueItem({
     <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
       <ThemedText
         weight="bold"
-        type="md"
         style={[{ opacity: 0.5, width: "30%" }, titleStyle]}
       >
         {title}
       </ThemedText>
       <ThemedText
-        type="l"
-        weight="medium"
+        type="md"
         style={[
           valueStyle,
           type === "phone"
@@ -54,6 +55,17 @@ export default function AgentDetailsScreen() {
   const { id, agent } = useLocalSearchParams();
   const agentDetails = JSON.parse(agent as string) as UserProfile;
   const palette = useThemePalette();
+  const { departments, isLoading: isDepsLoading } = useDepartments();
+  const [department, setDepartment] = useState<AgentDepartment | null>(null);
+  useEffect(() => {
+    if (isDepsLoading || !agentDetails?.department_id) {
+      return;
+    }
+    setDepartment(
+      departments.find((d) => agentDetails.department_id === d.id) || null
+    );
+  }, [departments, isDepsLoading]);
+
   return (
     <>
       <Stack.Screen
@@ -128,17 +140,37 @@ export default function AgentDetailsScreen() {
             title="العنوان :"
             value={agentDetails?.address ?? ""}
           />
-          <Separator />
-          <TitleValueItem
-            title="تسجيل الدّخول :"
-            value={agentDetails?.email ?? ""}
-            valueStyle={{ color: palette.error }}
-          />
-          <TitleValueItem
-            title="كلمة المرور"
-            value="********"
-            valueStyle={{ color: palette.error }}
-          />
+          {department && (
+            <>
+              <Separator />
+              <View style={{ paddingHorizontal: 10 }}>
+                <ThemedText
+                  style={{ textAlign: "center", marginBottom: 10 }}
+                  type="l"
+                >
+                  الفروع
+                </ThemedText>
+                <View
+                  style={{
+                    backgroundColor: palette.tint,
+                    paddingVertical: 10,
+                    paddingHorizontal: 15,
+                    borderRadius: 10,
+                  }}
+                >
+                  <TitleValueItem title="إسم الفرع: " value={department.name} />
+                  <TitleValueItem title="الوظيفة: " value={getArabicDepartmentRole(agentDetails.department_role as DepartmentRole)} />
+                </View>
+              </View>
+            </>
+          )}
+          <ThemedButton style={{marginTop: 20}} onPress={() => {
+            Alert.alert("غير متوفّرة", "هذه الخاصيّة قادمة في التحديث القادم")
+          }}>
+            <ThemedText style={{color: palette.background, textAlign: 'center'}}>
+            أضف إلى فرع
+            </ThemedText>
+          </ThemedButton>
         </View>
       </View>
     </>
