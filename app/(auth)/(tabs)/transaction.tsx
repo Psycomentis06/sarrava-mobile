@@ -100,6 +100,9 @@ export default function TransactionScreen() {
       case TransactionStatus.FAILED:
         return "فشلت";
       case TransactionStatus.CANCELED:
+        if (trx.is_paid_full === false) {
+          return "تمّ إسترداد الأموال";
+        }
         return "ألغيت";
       case TransactionStatus.CONFIRMED:
         return "إكتملت";
