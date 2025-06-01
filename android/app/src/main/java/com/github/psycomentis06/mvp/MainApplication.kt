@@ -1,4 +1,4 @@
-package com.anonymous.mvpmobile
+package com.github.psycomentis06.mvp
 
 import android.app.Application
 import android.content.res.Configuration

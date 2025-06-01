@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.mvpmobile",
+      "bundleIdentifier": "com.github.psycomentis06.mvp",
       "entitlements": {
         "com.apple.developer.networking.wifi-info": true
       }
@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.mvpmobile"
+      "package": "com.github.psycomentis06.mvp"
     },
     "web": {
       "bundler": "metro",
@@ -50,6 +50,12 @@
           "photosPermission": "اسمح للتطبيق بالوصول إلى ملفّاتك",
           "savePhotosPermission": "اسمح للتطبيق بحفظ الملفّات في جهازك",
           "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID."
         }
       ]
     ],

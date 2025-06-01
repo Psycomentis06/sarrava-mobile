@@ -1,4 +1,4 @@
-package com.anonymous.mvpmobile
+package com.github.psycomentis06.mvp
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
