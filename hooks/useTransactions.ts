@@ -3,7 +3,7 @@ import {
   Currency,
   InternalTransaction,
   TransactionStatus,
-  UserProfile
+  UserProfile,
 } from "@/utils/models";
 import { NewTransactionType } from "@/utils/schemas";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -66,6 +66,36 @@ const calculateBackoffDelay = (retryCount: number): number => {
   return INITIAL_BACKOFF_DELAY_MS * Math.pow(2, retryCount);
 };
 
+class AsyncMutex {
+  private locked = false;
+  private waitQueue: Array<() => void> = [];
+
+  async acquire(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      if (!this.locked) {
+        this.locked = true;
+        resolve();
+      } else {
+        this.waitQueue.push(resolve);
+      }
+    });
+  }
+
+  release(): void {
+    if (this.waitQueue.length > 0) {
+      const next = this.waitQueue.shift()!;
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
+let isOrchestrationRunning = false;
+let isSyncRunning = false;
+let isOrchestrationCompleted = false;
+const queueMutex = new AsyncMutex();
+
 export function useTransactions(): UseTransactionsHookReturnType {
   const { isInternetReachable } = useNetInfo();
   const [isSessionLoading, session] = UseSupabaseSession();
@@ -77,13 +107,6 @@ export function useTransactions(): UseTransactionsHookReturnType {
   const [page, setPage] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(true);
 
-  // Ref to prevent multiple instances of syncQueuedTransactions from running concurrently.
-  const isSyncQueuedRunningRef = useRef(false);
-  // Ref to prevent multiple instances of the main orchestration flow from running concurrently.
-  const isOrchestrationRunningRef = useRef(false);
-  // Ref to track if the initial data load and sync orchestration has completed for the current component lifecycle.
-  const isOrchestrationCompletedRef = useRef(false);
-
   /**
    * Retrieves transactions from the offline queue in AsyncStorage.
    * @returns {Promise<InternalTransaction[]>} A promise that resolves to an array of queued transactions.
@@ -91,19 +114,26 @@ export function useTransactions(): UseTransactionsHookReturnType {
   const getQueuedTransactions = useCallback(async (): Promise<
     InternalTransaction[]
   > => {
+    await queueMutex.acquire();
     try {
       const raw = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
-      console.log(
-        "Retrieved queue:",
-        raw ? JSON.parse(raw).length : 0,
-        "items"
-      );
-      return raw ? JSON.parse(raw) : [];
+      const result = raw ? JSON.parse(raw) : [];
+      console.log("Retrieved queue:", result.length, "items");
+      return result;
     } catch (error) {
       console.error("Error retrieving queued transactions:", error);
       return [];
+    } finally {
+      queueMutex.release();
     }
   }, []);
+
+  const writeQueueToStorage = useCallback(
+    async (queue: InternalTransaction[]) => {
+      await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    },
+    []
+  );
 
   /**
    * Adds a transaction to the offline queue in AsyncStorage.
@@ -111,25 +141,30 @@ export function useTransactions(): UseTransactionsHookReturnType {
    */
   const addTransactionToQueue = useCallback(
     async (tx: InternalTransaction) => {
+      await queueMutex.acquire();
       try {
-        const queue = await getQueuedTransactions();
+        const queue = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+        const currentQueue = queue ? JSON.parse(queue) : [];
+
         console.log(
           "Adding transaction to queue, current queue size:",
-          queue.length
+          currentQueue.length
         );
-        await AsyncStorage.setItem(
-          OFFLINE_QUEUE_KEY,
-          JSON.stringify([tx, ...queue]) // Add to the beginning to process newest first
-        );
+
+        const newQueue = [tx, ...currentQueue];
+        await writeQueueToStorage(newQueue);
+
         console.log(
           "Transaction added to queue, new queue size:",
-          queue.length + 1
+          newQueue.length
         );
       } catch (error) {
         console.error("Error adding transaction to queue:", error);
+      } finally {
+        queueMutex.release();
       }
     },
-    [getQueuedTransactions]
+    [writeQueueToStorage]
   );
 
   /**
@@ -139,18 +174,24 @@ export function useTransactions(): UseTransactionsHookReturnType {
    */
   const updateTransactionInQueue = useCallback(
     async (localId: string, update: Partial<InternalTransaction>) => {
+      await queueMutex.acquire();
       try {
-        const queue = await getQueuedTransactions();
-        const updated = queue.map((tx) =>
+        const queue = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+        const currentQueue = queue ? JSON.parse(queue) : [];
+
+        const updated = currentQueue.map((tx: InternalTransaction) =>
           tx.__internal?.localId === localId ? { ...tx, ...update } : tx
         );
-        await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(updated));
+
+        await writeQueueToStorage(updated);
         console.log("Updated transaction in queue:", localId);
       } catch (error) {
         console.error("Error updating transaction in queue:", error);
+      } finally {
+        queueMutex.release();
       }
     },
-    [getQueuedTransactions]
+    [writeQueueToStorage]
   );
 
   /**
@@ -159,21 +200,27 @@ export function useTransactions(): UseTransactionsHookReturnType {
    */
   const removeTransactionFromQueue = useCallback(
     async (localId: string) => {
+      await queueMutex.acquire();
       try {
-        const queue = await getQueuedTransactions();
-        const updated = queue.filter(
-          (tx) => tx.__internal?.localId !== localId
+        const queue = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+        const currentQueue = queue ? JSON.parse(queue) : [];
+
+        const updated = currentQueue.filter(
+          (tx: InternalTransaction) => tx.__internal?.localId !== localId
         );
-        await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(updated));
+
+        await writeQueueToStorage(updated);
         console.log(
           "Removed transaction from queue, new queue size:",
           updated.length
         );
       } catch (error) {
         console.error("Error removing transaction from queue:", error);
+      } finally {
+        queueMutex.release();
       }
     },
-    [getQueuedTransactions]
+    [writeQueueToStorage]
   );
 
   /**
@@ -362,7 +409,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
       let errorMessage = "";
 
       try {
-        // Handle status update operations
+        // Your existing sync logic here...
         if (
           tx.__internal?.operationType === "UPDATE_STATUS" &&
           tx.__internal?.originalId
@@ -370,6 +417,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
           console.log(
             `Syncing status update for originalId: ${tx.__internal.originalId} to status: ${tx.status}`
           );
+
           const { error } = await supabase
             .from("transactions")
             .update({ status: tx.status })
@@ -389,20 +437,17 @@ export function useTransactions(): UseTransactionsHookReturnType {
             __internal: {
               ...tx.__internal,
               syncStatus: "SYNCED",
-              errorMessage: undefined, // Clear any previous error
-              syncedAt: new Date().toISOString(), // Mark sync time
-              retryCount: 0, // Reset retry count on success
-              lastAttemptTimestamp: undefined, // Clear last attempt timestamp
+              errorMessage: undefined,
+              syncedAt: new Date().toISOString(),
+              retryCount: 0,
+              lastAttemptTimestamp: undefined,
             },
           };
           console.log(
             "Successfully synced status update for:",
             tx.__internal.originalId
           );
-        }
-        // Only handle ADD operations (new transaction creation)
-        // Fallback: if operationType is missing, treat as ADD for backward compatibility
-        else if (
+        } else if (
           !tx.__internal?.operationType ||
           tx.__internal?.operationType === "ADD"
         ) {
@@ -410,7 +455,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
             "Syncing new transaction creation for localId:",
             tx.__internal?.localId
           );
-          // Prepare payload, excluding __internal field
+
           const payload = {
             currency_id: tx.currency_id,
             original_amount: tx.original_amount,
@@ -421,7 +466,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
             created_by: tx.created_by,
             sender: tx.sender,
             receiver: tx.receiver,
-            created_at: tx.created_at, // Use original creation date for consistency
+            created_at: tx.created_at,
             operation_cost_usd: tx.operation_cost_usd,
             operation_cost_original: tx.operation_cost_original,
             price_percent_rate: tx.price_percent_rate,
@@ -437,13 +482,13 @@ export function useTransactions(): UseTransactionsHookReturnType {
             .insert(payload)
             .select(
               `
-              *,
-              currency:currency_id (
-                id, name, sign, to_dollar_rate, country,
-                flag, created_at, updated_at, updated_by,
-                ar_name, country_code, flag_url
-              )
-            `
+          *,
+          currency:currency_id (
+            id, name, sign, to_dollar_rate, country,
+            flag, created_at, updated_at, updated_by,
+            ar_name, country_code, flag_url
+          )
+        `
             )
             .single();
 
@@ -464,8 +509,8 @@ export function useTransactions(): UseTransactionsHookReturnType {
               syncStatus: "SYNCED",
               errorMessage: undefined,
               syncedAt: new Date().toISOString(),
-              retryCount: 0, // Reset retry count on success
-              lastAttemptTimestamp: undefined, // Clear last attempt timestamp
+              retryCount: 0,
+              lastAttemptTimestamp: undefined,
             },
           };
 
@@ -474,20 +519,20 @@ export function useTransactions(): UseTransactionsHookReturnType {
             syncedTx.id
           );
         } else {
-          // If operationType is not recognized, skip
           console.warn(
             "Unknown operationType for transaction in queue:",
             tx.__internal?.operationType
           );
-          return tx; // Return original transaction if not processed
+          return tx;
         }
 
-        // Update the transaction in the queue with the SYNCED status and new Supabase ID (if applicable)
+        // Update the queue with synced transaction
         await updateTransactionInQueue(tx.__internal?.localId!, {
           ...syncedTx,
-          id: syncedTx.id, // Ensure the actual Supabase ID is also updated in the queued item
+          id: syncedTx.id,
           __internal: syncedTx.__internal,
         });
+
         return syncedTx;
       } catch (err) {
         errorOccurred = true;
@@ -523,8 +568,9 @@ export function useTransactions(): UseTransactionsHookReturnType {
             retryCount: currentRetryCount,
           },
         };
+
         await updateTransactionInQueue(tx.__internal?.localId!, updatedTx);
-        throw err; // Re-throw the original error for calling function to handle
+        throw err;
       }
     },
     [updateTransactionInQueue] // Dependencies for trySyncTransaction
@@ -655,100 +701,56 @@ export function useTransactions(): UseTransactionsHookReturnType {
    * @returns {Promise<boolean>} True if any transactions were synced, false otherwise.
    */
   const syncQueuedTransactions = useCallback(async (): Promise<boolean> => {
-    // Use its own internal lock to prevent multiple concurrent syncQueuedTransactions calls
-    if (isSyncQueuedRunningRef.current) {
-      console.log(
-        "syncQueuedTransactions: Already running, skipping new attempt."
-      );
+    if (isSyncRunning || !isInternetReachable) {
+      console.log("Sync skipped: already running or offline.");
       return false;
     }
-    isSyncQueuedRunningRef.current = true; // Acquire internal lock
-    console.log(
-      "syncQueuedTransactions: Starting to sync queued transactions..."
-    );
+    isSyncRunning = true;
+    console.log("Starting queue sync process...");
 
-    let transactionsSynced = false;
+    let anyTransactionSynced = false;
     try {
-      let queueSnapshot = await getQueuedTransactions(); // Get a snapshot of the queue once
+      // Create a snapshot of the queue to process
+      const queue = await getQueuedTransactions();
+      const itemsToProcess = queue.filter(
+        (tx) =>
+          tx.__internal?.syncStatus === "PENDING" ||
+          (tx.__internal?.syncStatus === "ERROR" &&
+            (tx.__internal.retryCount || 0) < MAX_RETRIES)
+      );
 
-      // Filter the queue to only include items that need processing (PENDING or ERROR and ready for retry)
-      let itemsToProcess = queueSnapshot
-        .filter((tx) => {
-          if (tx.__internal?.syncStatus === "PENDING") {
-            return true; // Always process pending items
-          }
-          if (tx.__internal?.syncStatus === "ERROR") {
-            const lastAttempt = tx.__internal?.lastAttemptTimestamp
-              ? new Date(tx.__internal.lastAttemptTimestamp).getTime()
-              : 0;
-            const retryCount = tx.__internal?.retryCount || 0;
-            const delay = calculateBackoffDelay(retryCount);
-            const now = Date.now();
-            // Process if backoff delay has passed and max retries not exceeded
-            return now - lastAttempt >= delay && retryCount < MAX_RETRIES;
-          }
-          return false; // Skip SYNCED, FAILED_PERMANENTLY, and other statuses
-        })
-        .sort((a, b) => {
-          // Prioritize PENDING over ERROR, then by creation date
-          if (
-            a.__internal?.syncStatus === "PENDING" &&
-            b.__internal?.syncStatus !== "PENDING"
-          )
-            return -1;
-          if (
-            b.__internal?.syncStatus === "PENDING" &&
-            a.__internal?.syncStatus !== "PENDING"
-          )
-            return 1;
-          return (
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-        });
+      if (itemsToProcess.length === 0) {
+        console.log("No pending items in queue to sync.");
+        return false;
+      }
 
+      console.log(`Found ${itemsToProcess.length} items to process.`);
+
+      // Process all pending items sequentially
       for (const tx of itemsToProcess) {
-        // Iterate over the snapshot
         try {
-          console.log(
-            `Attempting to sync queued item: ${tx.__internal?.localId || tx.id}`
-          );
-          // trySyncTransaction now updates the item in the queue to SYNCED or ERROR/FAILED_PERMANENTLY
           await trySyncTransaction(tx);
-          transactionsSynced = true;
-          console.log(
-            `Successfully processed queued item: ${
-              tx.__internal?.localId || tx.id
-            }`
-          );
-        } catch (err) {
+          anyTransactionSynced = true;
+        } catch (e) {
           console.warn(
-            `Error during sync attempt for queued transaction ${
-              tx.__internal?.localId || tx.id
-            }:`,
-            err
+            `Failed to sync item ${tx.__internal?.localId}, will retry later.`,
+            e
           );
-          // The trySyncTransaction already handles updating the item in queue to ERROR/FAILED_PERMANENTLY
-          // No need for explicit update here.
         }
       }
-      console.log("Finished processing queued transactions.");
-      return transactionsSynced;
+
+      return anyTransactionSynced;
     } catch (err) {
-      // Always release lock on error
-      console.error("Error in syncQueuedTransactions, releasing lock.", err);
-      isSyncQueuedRunningRef.current = false;
-      throw err;
+      console.error(
+        "A critical error occurred in syncQueuedTransactions:",
+        err
+      );
+      return anyTransactionSynced; // Return whether anything succeeded before the error
     } finally {
-      // Always release lock on completion
-      isSyncQueuedRunningRef.current = false;
-      console.log("Released sync lock.");
+      console.log("Queue sync process finished.");
+      isSyncRunning = false; // Release the lock
     }
-  }, [
-    getQueuedTransactions, // Added dependency
-    trySyncTransaction,
-    setTransactions,
-    setSearchResults,
-  ]);
+  }, [getQueuedTransactions, trySyncTransaction, isInternetReachable]);
 
   // Refs for the latest stable functions to be used in useEffect dependencies
   const loadInitialDataRef = useRef(loadInitialData);
@@ -767,99 +769,49 @@ export function useTransactions(): UseTransactionsHookReturnType {
    * or when internet connectivity changes from offline to online.
    */
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
     const orchestrateDataFlow = async () => {
-      // Prevent multiple concurrent orchestrations for the entire flow
-      if (isOrchestrationRunningRef.current) {
-        console.log("Orchestration already running, skipping this trigger.");
-        return;
-      }
-
-      const currentUserId = session?.user?.id;
-
-      // Condition 1: Session not ready or no user ID. Keep loading true.
-      if (isSessionLoading || !currentUserId) {
+      if (isOrchestrationRunning) {
         console.log(
-          "Orchestration: Session not ready or user not logged in. Deferring orchestration."
+          "Orchestration skipped: another instance is already running."
         );
-        setIsLoading(true);
+        return;
+      }
+      if (isSessionLoading || !session?.user?.id) {
+        console.log("Orchestration deferred: session not ready.");
         return;
       }
 
-      // Condition 2: Already initialized for this specific component lifecycle AND internet is reachable.
-      // This is the main guard against redundant full orchestrations when online.
-      if (isOrchestrationCompletedRef.current && isInternetReachable) {
-        console.log(
-          `Orchestration: Already completed and online. Skipping full re-orchestration.`
-        );
-        setIsLoading(false); // Ensure loading is false
-        return;
-      }
-
-      isOrchestrationRunningRef.current = true; // Acquire orchestration lock
-      setIsLoading(true); // Set loading true at the start of orchestration
+      isOrchestrationRunning = true;
+      setIsLoading(true);
+      console.log("Orchestration: Starting data flow...");
 
       try {
-        console.log(`Orchestration: Starting for user ${currentUserId}.`);
+        // Step 1: Always load initial data from cache/server first.
+        await loadInitialData();
 
-        // Perform initial data load (from cache or Supabase)
-        await loadInitialDataRef.current();
-        console.log("Orchestration: Initial data loaded.");
-
-        // If internet is reachable, attempt to sync queued transactions
+        // Step 2: If online, attempt to sync the queue.
         if (isInternetReachable) {
-          console.log(
-            "Orchestration: Internet reachable, attempting to sync queued transactions."
-          );
-          const syncedAny = await syncQueuedTransactionsRef.current(); // This has its own internal loop and removal
-          if (syncedAny) {
+          const syncedSomething = await syncQueuedTransactions();
+
+          // Step 3: If any transaction was successfully synced, reload data to get the final state.
+          if (syncedSomething) {
             console.log(
-              "Orchestration: Transactions were synced, reloading data for consistency."
+              "Orchestration: Sync successful, reloading data for consistency."
             );
-            await loadInitialDataRef.current(); // Reload after sync to get actual IDs
+            await loadInitialData();
           }
-        } else {
-          console.log("Orchestration: Offline, skipping sync.");
         }
-
-        // Mark orchestration as completed only after successful initial load and sync attempt
-        isOrchestrationCompletedRef.current = true;
       } catch (err) {
-        console.error("Orchestration: Error during data load or sync:", err);
+        console.error("Orchestration error:", err);
       } finally {
-        setIsLoading(false); // Set loading false after orchestration completes
-        isOrchestrationRunningRef.current = false; // Release orchestration lock
+        console.log("Orchestration: Finished.");
+        setIsLoading(false);
+        isOrchestrationRunning = false; // Release the lock
       }
     };
 
-    // Debounce the orchestration call slightly to prevent rapid re-triggers
-    timeoutId = setTimeout(orchestrateDataFlow, 100);
-
-    // Cleanup: Clear timeout on unmount or dependency change
-    return () => {
-      clearTimeout(timeoutId);
-      if (!isInternetReachable && isOrchestrationCompletedRef.current) {
-        console.log(
-          "Orchestration Cleanup: Internet became unreachable, resetting orchestration completed flag."
-        );
-        isOrchestrationCompletedRef.current = false;
-      }
-      // Also reset if user logs out or session changes to null
-      if (!session?.user?.id && isOrchestrationCompletedRef.current) {
-        console.log(
-          "Orchestration Cleanup: User logged out or session became null, resetting orchestration completed flag."
-        );
-        isOrchestrationCompletedRef.current = false;
-      }
-    };
-  }, [
-    isSessionLoading,
-    session?.user?.id,
-    isInternetReachable,
-    syncQueuedTransactionsRef,
-    loadInitialDataRef,
-  ]);
+    orchestrateDataFlow();
+  }, [isSessionLoading, session?.user?.id, isInternetReachable]);
 
   // Effect to run periodic queue cleanup
   useEffect(() => {
