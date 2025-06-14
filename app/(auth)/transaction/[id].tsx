@@ -1,20 +1,137 @@
 import { ThemedText } from "@/components/ThemedText";
-import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useUserProfile } from "@/contexts/profile";
 import { useCurrencies } from "@/hooks/useCurrencies";
+import { useSupabaseHasPermissions } from "@/hooks/useSupabaseHasPermissions";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { generateTransactionHTML } from "@/services/transactions";
 import { Transaction } from "@/utils/models";
+import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system";
+import * as LocalAuthentication from "expo-local-authentication";
 import * as MediaLibrary from "expo-media-library";
 import * as Print from "expo-print";
 import { Stack, useLocalSearchParams } from "expo-router";
 import * as Share from "expo-sharing";
-import React, { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Toast from "react-native-root-toast";
+
+const SYMBOLS = "!@#$%^&*()_+-=<>?/[]{}123456789";
+const getRandomChar = () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+
+type PinCodeDisplayProps = { pinCode?: number | null };
+
+const PinCodeDisplay = ({ pinCode }: PinCodeDisplayProps) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [displayedDigits, setDisplayedDigits] = useState<string[]>(
+    Array(6).fill("*")
+  );
+  const animationTimers = useRef<NodeJS.Timeout[]>([]);
+  const hasAnimated = useRef(false);
+  const palette = useThemePalette();
+
+  const actualPin = pinCode?.toString().padStart(6, "0") ?? "000000";
+
+  const runStaggeredDecryptAnimation = () => {
+    clearAnimationTimers();
+
+    const digits = actualPin.split("");
+
+    digits.forEach((finalDigit, index) => {
+      let count = 0;
+      const maxCount = 10;
+      const timer = setInterval(() => {
+        count++;
+        setDisplayedDigits((prev) => {
+          const updated = [...prev];
+          updated[index] = count >= maxCount ? finalDigit : getRandomChar();
+          return updated;
+        });
+
+        if (count >= maxCount) {
+          clearInterval(timer);
+        }
+      }, 40 + index * 30); // stagger effect
+      animationTimers.current.push(timer);
+    });
+  };
+
+  const handleShowHidePress = async () => {
+    if (isVisible) {
+      setIsVisible(false);
+      setDisplayedDigits(Array(6).fill("*"));
+    } else {
+      // Only require authentication if we haven't authenticated before
+      if (!hasAnimated.current) {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "قم بالمصادقة لعرض رقم التعريف (PIN)",
+        });
+
+        if (result.success) {
+          setIsVisible(true);
+          runStaggeredDecryptAnimation();
+          hasAnimated.current = true;
+        }
+      } else {
+        // Already authenticated before, just show the PIN
+        setIsVisible(true);
+        setDisplayedDigits(actualPin.split(""));
+      }
+    }
+  };
+
+  const handleLongPressCopy = () => {
+    if (isVisible) {
+      Clipboard.setStringAsync(actualPin);
+      Toast.show("تم نسخ الرمز السرّي.", { duration: Toast.durations.SHORT });
+    }
+  };
+
+  const clearAnimationTimers = () => {
+    animationTimers.current.forEach(clearInterval);
+    animationTimers.current = [];
+  };
+
+  useEffect(() => {
+    return () => {
+      clearAnimationTimers();
+    };
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <ThemedText style={{ color: palette.accent, width: "50%" }}>
+        الرمز السرّي للمعاملة
+      </ThemedText>
+
+      <View style={styles.codeContainer}>
+        <Pressable onLongPress={handleLongPressCopy}>
+          <ThemedText style={styles.codeText}>
+            {displayedDigits.join("")}
+          </ThemedText>
+        </Pressable>
+
+        <TouchableOpacity
+          onPress={handleShowHidePress}
+          style={styles.toggleButton}
+        >
+          <ThemedText style={{ color: "#000" }}>
+            {isVisible ? "إخفاء" : "إظهار"}
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
 export default function TransactionDetailsScreen() {
   const palette = useThemePalette();
@@ -31,10 +148,19 @@ export default function TransactionDetailsScreen() {
     if (!profile?.currency || !currencies) return defaultCurrency;
     return currencies.find((c) => c.id === profile.currency) ?? defaultCurrency;
   }, [profile?.currency, currencies]);
-  const hideProfileCurrency = tObj.currency.sign === displayCurrency.sign;
-  const [permissionResponse, requestPermission] = MediaLibrary.usePermissions();
   const [isSaveTransactionFileLoading, setIsSaveTransactionFileLoading] =
     useState(false);
+  const { hasPermission } = useSupabaseHasPermissions(["admin"]);
+
+  const shouldDisplayPin = useMemo<boolean>(() => {
+    if (hasPermission) {
+      return true;
+    }
+    if (profile && profile.user_id === tObj.created_by) {
+      return true;
+    }
+    return false;
+  }, [hasPermission, profile]);
 
   const handleDownload = async (html: string, fileName = "transaction.pdf") => {
     setIsSaveTransactionFileLoading(true);
@@ -363,11 +489,11 @@ export default function TransactionDetailsScreen() {
                     type="l"
                     style={{ color: palette.error, textAlign: "center" }}
                   >
-                    {`${
-                      Math.round((Math.round(
-                        ((tObj.operation_cost_usd ?? 0) * 100) 
-                      ) / 100) / displayCurrency.to_dollar_rate)
-                    } ${displayCurrency.sign}`}
+                    {`${Math.round(
+                      Math.round((tObj.operation_cost_usd ?? 0) * 100) /
+                        100 /
+                        displayCurrency.to_dollar_rate
+                    )} ${displayCurrency.sign}`}
                   </ThemedText>
                   <ThemedText
                     style={{ color: palette.success, textAlign: "center" }}
@@ -398,19 +524,43 @@ export default function TransactionDetailsScreen() {
                 marginVertical: 20,
               }}
             />
-
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <ThemedText style={{ color: palette.accent, width: "60%" }}>
-                الرمز السرّي للمعاملة
-              </ThemedText>
-              <ThemedTextInput
-                value={tObj.pin_code?.toString()}
-                keyboardType="numeric"
-              />
-            </View>
+            {shouldDisplayPin && (<PinCodeDisplay pinCode={tObj.pin_code} />)}
           </View>
         </ThemedView>
       </ScrollView>
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  codeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  codeText: {
+    fontFamily: Platform.select({
+      ios: "Menlo",
+      android: "monospace",
+      default: "Courier",
+    }),
+    fontSize: 18,
+    letterSpacing: 2,
+    backgroundColor: "#f5f5f5",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    minWidth: 100,
+    textAlign: "center",
+  },
+  toggleButton: {
+    backgroundColor: "#ccc",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+});
