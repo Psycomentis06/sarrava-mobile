@@ -171,7 +171,7 @@ export default function AgentScreen() {
                 onPress={() =>
                   router.navigate({
                     pathname: "/(auth)/agent/[id]",
-                    params: { id: item.id, agent: JSON.stringify(item) },
+                    params: { id: item.user_id, agent: JSON.stringify(item) },
                   })
                 }
               >

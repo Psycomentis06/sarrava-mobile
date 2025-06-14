@@ -56,6 +56,15 @@ export type UserProfile = {
   department?: AgentDepartment;
   department_id?: string;
   department_role?: DepartmentRole;
+  departments?: DepartmentAgentRelation[];
+};
+
+export type DepartmentAgentRelation = {
+  agent_id: string;
+  department_id: string;
+  role: DepartmentRole;
+  created_at: number | string;
+  added_by: string;
 };
 
 export type Transaction = {
@@ -147,7 +156,9 @@ export type DepartmentTransactionsAnalytics = BaseTransactionsAnalytics & {
   department?: AgentDepartment;
 };
 
-export type TransactionsAnalytics = AgentTransactionsAnalytics | DepartmentTransactionsAnalytics
+export type TransactionsAnalytics =
+  | AgentTransactionsAnalytics
+  | DepartmentTransactionsAnalytics;
 
 export type Report = {
   id: string; // UUID
