@@ -11,8 +11,11 @@ export const newTransactionAgentSchema = z.object({
     .min(2, { message: "يجب أن يتكون اللقب من حرفين على الأقل." }),
   email: z
     .string()
-    .nonempty({ message: "البريد الألكتروني مطلوب" })
-    .email({ message: "عنوان البريد الإلكتروني غير صالح." }),
+    // .nonempty({ message: "البريد الألكتروني مطلوب" })
+    .email({ message: "عنوان البريد الإلكتروني غير صالح." })
+    .or(z.literal(""))
+    .optional()
+    .transform((val) => (val === "" ? undefined : val)),
   phone: z
     .string()
     .nonempty({ message: "رقم الهاتف مطلوب" })
@@ -75,6 +78,7 @@ export const newTransactionPriceSchema = z
 export const newTransactionSchema = z.object({
   sender: newTransactionAgentSchema,
   receiver: newTransactionAgentSchema,
+  department: z.string().nonempty({message: 'الرجاء تحديد فرع'}).uuid({ message: "ليس UUID" }),
   price: newTransactionPriceSchema,
 });
 

@@ -97,7 +97,17 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         // If online, fetch from Supabase
         const { data, error } = await supabase
           .from("user_profiles")
-          .select("*")
+          .select(
+            `
+            *,
+              departments:agents_departments (
+                department_id,
+                role,
+                added_by,
+                created_at
+              )
+            `
+          )
           .eq("user_id", userId)
           .single();
 

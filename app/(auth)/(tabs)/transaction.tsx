@@ -5,13 +5,26 @@ import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";
+import { useUserProfile } from "@/contexts/profile";
+import { useDepartments } from "@/hooks/useDepartments";
+import { useSupabaseHasPermissions } from "@/hooks/useSupabaseHasPermissions";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import { useTransactions } from "@/hooks/useTransactions";
+import {
+  TransactionSearchScope,
+  TransactionSearchScopeOptions,
+  TransactionSearchType,
+  TransactionSortOptions,
+  useTransactions,
+} from "@/hooks/useTransactions";
 import { hexToRgba } from "@/utils/colors";
-import { Transaction, TransactionStatus } from "@/utils/models";
+import {
+  AgentDepartment,
+  Transaction,
+  TransactionStatus,
+} from "@/utils/models";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,17 +32,13 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
+import { State, TapGestureHandler } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-enum TransactionSearchType {
-  ALL, // Search for transactions by sender or receiver
-  SENDER, // sender only
-  RECEIVER, // receiver only
-}
 
 export default function TransactionScreen() {
   const insets = useSafeAreaInsets();
@@ -57,11 +66,62 @@ export default function TransactionScreen() {
     TransactionSearchType.ALL
   );
   const [searchInput, setSearchInput] = useState<string>("");
+  const [searchValue, setSearchValue] = useState<string>("");
   const [isReloading, setIsReloading] = useState<boolean>(false);
+  const { hasPermission: isAdmin } = useSupabaseHasPermissions(["admin"]);
+  const { departments } = useDepartments();
+  const { profile } = useUserProfile();
+  const [searchScope, setSearchScope] = useState<TransactionSearchScopeOptions>(
+    { scope: TransactionSearchScope.ALL }
+  );
+  const [sort, setSort] = useState<TransactionSortOptions>({
+    key: "created_at",
+    direction: "desc",
+  });
 
   useEffect(() => {
-    console.debug("has next page: ", hasNextPage);
-  }, [hasNextPage]);
+    search(searchValue, searchType, searchScope, sort);
+  }, [searchValue, searchType, searchScope, sort]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      setSearchScope({
+        scope: TransactionSearchScope.ALL,
+      });
+    } else if (profile?.departments?.length) {
+      setSearchScope({
+        scope: TransactionSearchScope.JOINED_DEPARTMENTS,
+        departmentIds: profile.departments.map((r) => r.department_id),
+      });
+    }
+  }, [isAdmin, profile]);
+
+  const agentDepartments = useMemo((): AgentDepartment[] => {
+    if (isAdmin) {
+      return departments;
+    }
+
+    if (!profile?.departments || !departments) {
+      return [];
+    }
+
+    return profile.departments
+      .map((relation) => {
+        const fullDepartment = departments.find(
+          (d) => d.id === relation.department_id
+        );
+        if (fullDepartment) {
+          return {
+            ...fullDepartment,
+            role: relation.role,
+            agentRelationCreatedAt: relation.created_at,
+            addedBy: relation.added_by,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as AgentDepartment[];
+  }, [profile, departments, isAdmin]);
 
   const getItemColorByStatus = (status: TransactionStatus) => {
     switch (status) {
@@ -274,6 +334,10 @@ export default function TransactionScreen() {
                   label="المستفيد"
                   value={TransactionSearchType.RECEIVER}
                 />
+                <Picker.Item
+                  label="الرّقم"
+                  value={TransactionSearchType.CODE}
+                />
               </Picker>
             </View>
             <ThemedTextInput
@@ -284,7 +348,7 @@ export default function TransactionScreen() {
               onFocus={() => setIsSearchInputFocused(true)}
               onBlur={() => setIsSearchInputFocused(false)}
               returnKeyType="search"
-              onEndEditing={() => search(searchInput, searchType)}
+              onEndEditing={() => setSearchValue(searchInput)}
             />
           </View>
           <ThemedButton
@@ -304,6 +368,181 @@ export default function TransactionScreen() {
               />
             </ThemedText>
           </ThemedButton>
+        </View>
+
+        <ScrollView
+          horizontal={true}
+          style={{ marginTop: 5, minHeight: 50, maxHeight: 50 }}
+          contentContainerStyle={{ alignItems: "center" }}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
+          showsHorizontalScrollIndicator={false}
+        >
+          {isAdmin && (
+            <TapGestureHandler
+              onHandlerStateChange={({ nativeEvent }) => {
+                if (nativeEvent.state === State.END) {
+                  setSearchScope({ scope: TransactionSearchScope.ALL });
+                }
+              }}
+            >
+              <View
+                style={[
+                  styles.searchScopeButton,
+                  {
+                    backgroundColor:
+                      searchScope.scope === TransactionSearchScope.ALL
+                        ? palette.accent
+                        : "rgba(0,0,0,0.2)",
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={{
+                    color:
+                      searchScope.scope === TransactionSearchScope.ALL
+                        ? "white"
+                        : "black",
+                  }}
+                >
+                  الكلّ
+                </ThemedText>
+              </View>
+            </TapGestureHandler>
+          )}
+          {!isAdmin && (
+            <TapGestureHandler
+              onHandlerStateChange={({ nativeEvent }) => {
+                if (nativeEvent.state === State.END) {
+                  setSearchScope({
+                    scope: TransactionSearchScope.JOINED_DEPARTMENTS,
+                    departmentIds: agentDepartments.map((d) => d.id),
+                  });
+                }
+              }}
+            >
+              <View
+                style={[
+                  styles.searchScopeButton,
+                  {
+                    backgroundColor:
+                      searchScope.scope ===
+                      TransactionSearchScope.JOINED_DEPARTMENTS
+                        ? palette.accent
+                        : "rgba(0,0,0,0.2)",
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={{
+                    color:
+                      searchScope.scope ===
+                      TransactionSearchScope.JOINED_DEPARTMENTS
+                        ? "white"
+                        : "black",
+                  }}
+                >
+                  الكلّ
+                </ThemedText>
+              </View>
+            </TapGestureHandler>
+          )}
+          {profile && (
+            <TapGestureHandler
+              onHandlerStateChange={({ nativeEvent }) => {
+                if (nativeEvent.state === State.END) {
+                  setSearchScope({
+                    scope: TransactionSearchScope.OWNER,
+                    userId: profile?.user_id,
+                  });
+                }
+              }}
+            >
+              <View
+                style={[
+                  styles.searchScopeButton,
+                  {
+                    backgroundColor:
+                      searchScope.scope === TransactionSearchScope.OWNER
+                        ? palette.accent
+                        : "rgba(0,0,0,0.2)",
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={{
+                    color:
+                      searchScope.scope === TransactionSearchScope.OWNER
+                        ? "white"
+                        : "black",
+                  }}
+                >
+                  معاملاتي
+                </ThemedText>
+              </View>
+            </TapGestureHandler>
+          )}
+
+          {agentDepartments.map((dep) => (
+            <TapGestureHandler
+              key={dep.id}
+              onHandlerStateChange={({ nativeEvent }) => {
+                if (nativeEvent.state === State.END) {
+                  setSearchScope({
+                    scope: TransactionSearchScope.DEPARTMENT,
+                    departmentId: dep.id,
+                  });
+                }
+              }}
+            >
+              <View
+                style={[
+                  styles.searchScopeButton,
+                  {
+                    backgroundColor:
+                      searchScope.scope === TransactionSearchScope.DEPARTMENT &&
+                      searchScope.departmentId === dep.id
+                        ? palette.accent
+                        : "rgba(0,0,0,0.2)",
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={{
+                    color:
+                      searchScope.scope === TransactionSearchScope.DEPARTMENT &&
+                      searchScope.departmentId === dep.id
+                        ? "white"
+                        : "black",
+                  }}
+                >
+                  {dep.name}
+                </ThemedText>
+              </View>
+            </TapGestureHandler>
+          ))}
+        </ScrollView>
+
+        <View style={{ flexDirection: "row" }}>
+          <Picker
+            style={{ width: "70%" }}
+            selectedValue={sort.key}
+            onValueChange={(value) => setSort((s) => ({ ...s, key: value }))}
+          >
+            <Picker.Item label="حسب التاريخ" value="created_at" />
+            <Picker.Item label="حسب السعر" value="original_amount" />
+          </Picker>
+
+          <Picker
+            style={{ width: "30%" }}
+            selectedValue={sort.direction}
+            onValueChange={(value) =>
+              setSort((s) => ({ ...s, direction: value }))
+            }
+          >
+            <Picker.Item label="تنازلي" value="desc" />
+            <Picker.Item label="تصاعدي" value="asc" />
+          </Picker>
         </View>
 
         {isTransactionsLoading ? (
@@ -367,9 +606,14 @@ export default function TransactionScreen() {
                     <Pressable
                       style={[
                         styles.transactionsListItem,
-                        { backgroundColor: i.item?.__internal?.syncStatus === 'PENDING' ? hexToRgba(palette.accent, 0.2) : (
-                          i.item?.__internal?.syncStatus === 'ERROR' ? hexToRgba(palette.error, 0.2) : palette.tint
-                        ) },
+                        {
+                          backgroundColor:
+                            i.item?.__internal?.syncStatus === "PENDING"
+                              ? hexToRgba(palette.accent, 0.2)
+                              : i.item?.__internal?.syncStatus === "ERROR"
+                              ? hexToRgba(palette.error, 0.2)
+                              : palette.tint,
+                        },
                       ]}
                       android_ripple={{
                         color: "rgba(0,0,0,0.26)",
@@ -401,7 +645,7 @@ export default function TransactionScreen() {
                         }}
                       >
                         <ThemedText type="xs" style={{ opacity: 0.7 }}>
-                          {"#" + i.item.id}
+                          {"#" + i.item.code}
                         </ThemedText>
                         <ThemedText type="sm">
                           {new Date(i.item.created_at).toLocaleString()}
@@ -535,5 +779,12 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: "column",
     justifyContent: "space-around",
+  },
+  searchScopeButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 5,
+    marginHorizontal: 10,
+    borderRadius: 7,
+    overflow: "hidden",
   },
 });

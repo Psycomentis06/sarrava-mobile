@@ -8,6 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Appearance } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { RootSiblingParent } from "react-native-root-siblings";
 
@@ -43,17 +44,22 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={DefaultTheme}>
-      <AuthSessionProvider>
-        <RootSiblingParent>
-          <Stack>
-            <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <NetworkModeStatus />
-          <StatusBar style="auto" />
-        </RootSiblingParent>
-      </AuthSessionProvider>
+      <GestureHandlerRootView>
+        <AuthSessionProvider>
+          <RootSiblingParent>
+            <Stack>
+              <Stack.Screen
+                name="auth/login"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <NetworkModeStatus />
+            <StatusBar style="auto" />
+          </RootSiblingParent>
+        </AuthSessionProvider>
+      </GestureHandlerRootView>
     </ThemeProvider>
   );
 }

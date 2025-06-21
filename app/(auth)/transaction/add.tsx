@@ -4,6 +4,7 @@ import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { useUserProfile } from "@/contexts/profile";
 import { useCurrencies } from "@/hooks/useCurrencies";
+import { useDepartments } from "@/hooks/useDepartments";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { useTransactions } from "@/hooks/useTransactions";
 import { getExchangeRate } from "@/services/transactions";
@@ -212,8 +213,7 @@ function TransactionFormComponent({
       const percentAmount = Math.round(totalPrice * percentRate * 100) / 100;
       const fixedAmount = Math.round(fixed * 100) / 100;
 
-      const totalFee =
-        Math.round((percentAmount + fixedAmount) * 100) / 100;
+      const totalFee = Math.round((percentAmount + fixedAmount) * 100) / 100;
 
       return {
         percentAmount,
@@ -582,9 +582,10 @@ export default function AddTransactionScreen() {
   const palette = useThemePalette();
   const { profile } = useUserProfile();
   const router = useRouter();
-  const {currencies, isLoading: isCurrenciesLoading} = useCurrencies()
+  const { currencies, isLoading: isCurrenciesLoading } = useCurrencies();
   const [isAddLoading, setIsAddLoading] = useState(false);
   const { add } = useTransactions();
+  const { departments } = useDepartments();
   const { control, formState, handleSubmit, watch, setValue } =
     useForm<NewTransactionType>({
       resolver: zodResolver(newTransactionSchema),
@@ -616,10 +617,11 @@ export default function AddTransactionScreen() {
 
   useEffect(() => {
     if (!isCurrenciesLoading) {
-      setValue("price.selectedCurrency", 
-        currencies.filter((c) => c.sign === 'USD')[0]
+      setValue(
+        "price.selectedCurrency",
+        currencies.filter((c) => c.sign === "USD")[0]
         // set dollar as default
-      )
+      );
     }
   }, [isCurrenciesLoading]);
 
@@ -690,6 +692,67 @@ export default function AddTransactionScreen() {
             formState={formState}
             title="المرسل"
           />
+          <View
+            style={[styles.sectionContainer, { backgroundColor: palette.tint }]}
+          >
+            <LinearGradient
+              colors={[palette.accent, "transparent"]}
+              style={{
+                padding: 5,
+                borderRadius: 5,
+              }}
+              start={{ x: 1, y: 0 }}
+            >
+              <ThemedText
+                type="l"
+                weight="bold"
+                style={{
+                  color: palette.background,
+                }}
+              >
+                الفرع
+              </ThemedText>
+            </LinearGradient>
+            <View>
+              <Controller
+                control={control}
+                name="department"
+                render={({
+                  field: { value, onBlur, onChange },
+                  fieldState,
+                }) => (
+                  <>
+                    <View
+                      style={{
+                        borderColor: "rgba(0,0,0,0.3)",
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        marginVertical: 10,
+                      }}
+                    >
+                      <Picker
+                        onBlur={onBlur}
+                        onValueChange={onChange}
+                        selectedValue={value}
+                      >
+                        {departments &&
+                          departments.map((dep) => (
+                            <Picker.Item
+                              key={dep.id}
+                              label={`${dep.name}|${dep.country_ar}`}
+                              value={dep.id}
+                            />
+                          ))}
+                      </Picker>
+                    </View>
+                    {fieldState?.error?.message && (
+                      <ThemedText style={{ color: palette.error }}></ThemedText>
+                    )}
+                  </>
+                )}
+              />
+            </View>
+          </View>
           <TransactionFormComponent
             control={control}
             formState={formState}

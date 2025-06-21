@@ -31,6 +31,7 @@ export type AgentDepartment = {
   city: string;
   zipcode: string;
   address: string;
+  index: number;
   created_at: number | string | null;
   updated_at: number | string | null;
   updated_by: string | null;
@@ -53,6 +54,7 @@ export type UserProfile = {
   created_at: string;
   profile_picture?: string | null;
   currency?: number | null;
+  index: number;
   department?: AgentDepartment;
   department_id?: string;
   department_role?: DepartmentRole;
@@ -71,6 +73,9 @@ export type Transaction = {
   id: string; // UUID
   currency: Currency;
   currency_id: number;
+  code: string;
+  department_id?: string;
+  department?: AgentDepartment;
   amount_usd: number; // numeric
   original_amount: number; // numeric
   operation_cost_usd: number; // calculated between price percent_rate and price_fixed_rate
@@ -88,14 +93,14 @@ export type Transaction = {
   sender?: {
     firstname: string;
     lastname: string;
-    email: string;
+    email?: string;
     phone: string;
     address: string;
   } | null; // jsonb, optional
   receiver?: {
     firstname: string;
     lastname: string;
-    email: string;
+    email?: string;
     phone: string;
     address: string;
   } | null; // jsonb, optional

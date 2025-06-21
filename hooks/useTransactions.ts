@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { generateTransactionCode } from "@/services/transactions";
 import {
   Currency,
   InternalTransaction,
@@ -10,14 +11,47 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNetInfo } from "@react-native-community/netinfo";
 import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDepartments } from "./useDepartments";
 import { UseSupabaseSession } from "./useSupabaseSession";
 
 export enum TransactionSearchType {
   ALL,
+  CODE,
   SENDER,
   RECEIVER,
 }
-// Extend Transaction type for internal sync management
+
+export enum TransactionSearchScope {
+  // All transactions
+  // For regular user it's OWNER + JOIN_DEPARTMENTS
+  // For admin it's select(*)
+  ALL,
+  // Only transactions created by current user
+  OWNER,
+  // A specific department
+  // If the user is admin get all transactions associated to a given department
+  // If the user is regular get all transactions associated to a department that the user already belongs to
+  DEPARTMENT,
+  // All departments that current user belongs to
+  JOINED_DEPARTMENTS,
+}
+
+export type TransactionSearchScopeOptions =
+  | { scope: TransactionSearchScope.ALL }
+  | { scope: TransactionSearchScope.OWNER; userId: string }
+  | { scope: TransactionSearchScope.DEPARTMENT; departmentId: string }
+  | {
+      scope: TransactionSearchScope.JOINED_DEPARTMENTS;
+      departmentIds: string[];
+    };
+
+export type TransactionSortKey = "created_at" | "original_amount";
+export type TransactionSortDirection = "asc" | "desc";
+
+export type TransactionSortOptions = {
+  key: TransactionSortKey;
+  direction: TransactionSortDirection;
+};
 
 export type UseTransactionsHookReturnType = {
   isLoading: boolean;
@@ -26,7 +60,9 @@ export type UseTransactionsHookReturnType = {
   searchResults: InternalTransaction[];
   search: (
     val: string,
-    type?: TransactionSearchType
+    type?: TransactionSearchType,
+    scope?: TransactionSearchScopeOptions,
+    sort?: TransactionSortOptions
   ) => Promise<InternalTransaction[]>;
   reload: () => Promise<InternalTransaction[]>;
   loadMore: () => Promise<void>;
@@ -106,6 +142,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
   const [searchResults, setSearchResults] = useState<InternalTransaction[]>([]);
   const [page, setPage] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(true);
+  const { departments } = useDepartments();
 
   /**
    * Retrieves transactions from the offline queue in AsyncStorage.
@@ -283,7 +320,11 @@ export function useTransactions(): UseTransactionsHookReturnType {
     async (
       currentPage: number = 0,
       searchTerm: string = "",
-      searchType: TransactionSearchType = TransactionSearchType.ALL
+      searchType: TransactionSearchType = TransactionSearchType.ALL,
+      scope: TransactionSearchScopeOptions = {
+        scope: TransactionSearchScope.ALL,
+      },
+      sort: TransactionSortOptions = { key: "created_at", direction: "desc" }
     ): Promise<InternalTransaction[]> => {
       if (!session?.user?.id) {
         console.warn(
@@ -305,7 +346,6 @@ export function useTransactions(): UseTransactionsHookReturnType {
             `,
           { count: "exact" }
         );
-        query = query.eq("created_by", session.user.id);
 
         if (searchTerm) {
           const term = `%${searchTerm}%`;
@@ -326,18 +366,41 @@ export function useTransactions(): UseTransactionsHookReturnType {
             `receiver->>phone.ilike.${term}`,
           ];
 
+          const codeQuery = [`code.ilike.${term}`];
+
           let orClause = "";
           if (searchType === TransactionSearchType.SENDER) {
             orClause = senderQuery.join(",");
           } else if (searchType === TransactionSearchType.RECEIVER) {
             orClause = receiverQuery.join(",");
+          } else if (searchType === TransactionSearchType.CODE) {
+            orClause = codeQuery.join(",");
           } else {
-            orClause = [...senderQuery, ...receiverQuery].join(",");
+            orClause = [...senderQuery, ...receiverQuery, ...codeQuery].join(
+              ","
+            );
           }
 
           query = query.or(orClause);
         }
-        query = query.order("created_at", { ascending: false });
+
+        switch (scope.scope) {
+          case TransactionSearchScope.OWNER:
+            query = query.eq("created_by", scope.userId);
+            break;
+          case TransactionSearchScope.DEPARTMENT:
+            query = query.eq("department_id", scope.departmentId);
+            break;
+          case TransactionSearchScope.JOINED_DEPARTMENTS:
+            query = query.in("department_id", scope.departmentIds);
+            break;
+          case TransactionSearchScope.ALL:
+          default:
+            // No filter for admin
+            break;
+        }
+
+        query = query.order(sort.key, { ascending: sort.direction === "asc" });
         query = query.range(startIndex, startIndex + PAGE_SIZE - 1);
         const { data, error, count } = await query;
         if (error) {
@@ -457,6 +520,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
           );
 
           const payload = {
+            id: tx.id,
             currency_id: tx.currency_id,
             original_amount: tx.original_amount,
             amount_usd: tx.amount_usd,
@@ -475,6 +539,8 @@ export function useTransactions(): UseTransactionsHookReturnType {
             operation_tax_original: 0,
             status: tx.status,
             pin_code: tx.pin_code,
+            code: tx.code,
+            department_id: tx.department_id
           };
 
           const { data: trxData, error: trxErr } = await supabase
@@ -841,15 +907,16 @@ export function useTransactions(): UseTransactionsHookReturnType {
   const search = useCallback(
     async (
       searchValue: string,
-      searchType: TransactionSearchType = TransactionSearchType.ALL
+      searchType: TransactionSearchType = TransactionSearchType.ALL,
+      scope: TransactionSearchScopeOptions = {
+        scope: TransactionSearchScope.ALL,
+      },
+      sort: TransactionSortOptions = { key: "created_at", direction: "desc" }
     ): Promise<InternalTransaction[]> => {
       const term = searchValue.trim().toLowerCase();
       console.debug("Searching for:", term);
-      if (!term) {
-        setSearchResults(transactions);
-        return transactions;
-      }
-
+      console.log(term, searchType, scope, sort);
+      
       try {
         if (isInternetReachable === false) {
           const filtered = transactions.filter((t) => {
@@ -880,7 +947,9 @@ export function useTransactions(): UseTransactionsHookReturnType {
           const results = await getTransactionsFromSupabase(
             0,
             term,
-            searchType
+            searchType,
+            scope,
+            sort
           );
           console.debug("Online search results count:", results.length);
           setSearchResults(results);
@@ -1065,20 +1134,38 @@ export function useTransactions(): UseTransactionsHookReturnType {
       const localId = Crypto.randomUUID();
       const createdAt = new Date().toISOString(); // Capture creation time immediately
       console.log("Creating transaction with localId:", localId);
+      if (!profile) {
+        throw {
+          error: new Error("profile is missing"),
+          error_ar:
+            "لايمكن إنشاء المعاملة. لم يتمّ التعرّف على تعريف الوكيل الحالي",
+        };
+      }
+
+      const selectedDepartment = departments.find(
+        (d) => d.id === data.department
+      );
+      if (!selectedDepartment) {
+        throw {
+          error: new Error("department is missing"),
+          error_ar: "لا يمكن إضافة المعاملة. لم يتمّ تحديد الفرع",
+        };
+      }
 
       const localTransaction: InternalTransaction = {
-        id: localId, // Temporary ID for local tracking
+        id: localId,
         currency: selectedCurrency,
         currency_id: selectedCurrency.id,
+        code: generateTransactionCode(profile, selectedDepartment),
         original_amount: data.price.totalPrice,
         amount_usd: usdAmount,
         exchange_rate: selectedCurrency.to_dollar_rate,
         is_paid_full: data.price.isPaidFull,
         first_installment: data.price.firstInstallment,
-        created_by: profile?.user_id ?? "offline",
+        created_by: profile?.user_id ?? "",
         sender: data.sender,
         receiver: data.receiver,
-        created_at: createdAt, // Use captured creation time
+        created_at: createdAt,
         operation_cost_usd: opCost * selectedCurrency.to_dollar_rate,
         operation_cost_original: opCost,
         price_percent_rate: opPercentCost,
@@ -1086,42 +1173,37 @@ export function useTransactions(): UseTransactionsHookReturnType {
         operation_tax_usd: 0,
         operation_tax_original: 0,
         pin_code: Math.floor(100000 + Math.random() * 900000),
+        department_id: data.department,
         status: "PENDING" as TransactionStatus,
         __internal: {
           localId,
           syncStatus: "PENDING",
           operationType: "ADD",
           createdOffline: isInternetReachable === false,
-          retryCount: 0, // Initialize retry count
-          lastAttemptTimestamp: createdAt, // Initial attempt timestamp
+          retryCount: 0,
+          lastAttemptTimestamp: createdAt,
         },
       };
 
-      // ONLY add to queue immediately. DO NOT update local state directly here.
       await addTransactionToQueue(localTransaction);
 
       if (isInternetReachable === false) {
         console.log(
           "Offline: Added transaction to queue. Triggering reload to update UI."
         );
-        // Trigger a reload to display the newly queued transaction
-        await reload(); // This will call loadInitialData, which merges queued items
+        await reload();
         return localTransaction;
       }
 
-      // If online, try to sync immediately
       try {
         console.log("Online: Attempting to sync new transaction immediately");
         const synced = await trySyncTransaction(localTransaction);
-        // After successful sync, reload data to get the actual Supabase ID and ensure consistency
         await reload();
         return synced;
       } catch (e) {
         console.error("Error syncing new transaction immediately:", e);
-        // The trySyncTransaction already updated the queue with ERROR/FAILED_PERMANENTLY status
-        // Just trigger reload to reflect the updated status in UI
         await reload();
-        throw e; // Re-throw the error for the consumer
+        throw e;
       }
     },
     [isInternetReachable, reload, trySyncTransaction, addTransactionToQueue]

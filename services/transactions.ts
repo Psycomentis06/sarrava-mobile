@@ -2,7 +2,12 @@
  * Functions related working with transactions
  */
 
-import { Currency, Transaction } from "@/utils/models";
+import {
+  AgentDepartment,
+  Currency,
+  Transaction,
+  UserProfile,
+} from "@/utils/models";
 
 export enum TransactionPricingTierFeeType {
   FIXED = "fixed",
@@ -102,16 +107,18 @@ export function calculateTransactionFees(amount: number) {
 export function generateTransactionHTML(trx: Transaction, id: string): string {
   const formattedDate = new Date(trx.created_at).toLocaleString();
 
-const receiver = `
+  const receiver = `
   <div class="contact">
-    <div style="font-weight: 500;">${trx.receiver?.firstname} ${trx.receiver?.lastname}</div>
+    <div style="font-weight: 500;">${trx.receiver?.firstname} ${
+    trx.receiver?.lastname
+  }</div>
     <div>${trx.receiver?.phone ?? ""}</div>
     <div>${trx.receiver?.email ?? ""}</div>
     <div>${trx.receiver?.address ?? ""}</div>
   </div>
 `;
 
-const sender = `
+  const sender = `
   <div class="contact">
     <div>${trx.sender?.firstname} ${trx.sender?.lastname}</div>
     <div>${trx.sender?.phone ?? ""}</div>
@@ -311,4 +318,32 @@ const sender = `
 </body>
 </html>
 `;
+}
+
+export function generateTransactionCode(
+  agent: UserProfile,
+  department: AgentDepartment
+): string {
+  const agentCode = agent.index || 0;
+  const depCode = department.index || 0;
+  const today = new Date();
+  const day = today.getDate();
+  const month = today.getMonth() + 1;
+  const year = today.getFullYear();
+  const shortYear = year % 100;
+  const dateValues = [
+    { value: day, prefix: 1 },
+    { value: month, prefix: 2 },
+    { value: shortYear, prefix: 3 },
+  ];
+  dateValues.sort((a, b) => a.value - b.value);
+  const dateCode = dateValues
+    .map((item) => `${item.prefix}${item.value.toString().padStart(2, "0")}`)
+    .join("");
+  const randomDigits = Math.floor(Math.random() * 100000)
+    .toString()
+    .padStart(5, "0");
+  return `${depCode.toString().padStart(3, "0")}${agentCode
+    .toString()
+    .padStart(3, "0")}${dateCode}${randomDigits}`;
 }
