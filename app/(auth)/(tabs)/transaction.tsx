@@ -249,7 +249,7 @@ export default function TransactionScreen() {
         paddingRight: insets.right,
       }}
     >
-      {renderUpdateStatusModal()}
+      {/* {renderUpdateStatusModal()} */}
       <View style={{ padding: 10, height: "100%" }}>
         <View
           style={{
