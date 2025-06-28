@@ -16,6 +16,11 @@ import {
   TransactionSortOptions,
   useTransactions,
 } from "@/hooks/useTransactions";
+import {
+  getItemColorByStatus,
+  getTransactionArabicStatus,
+  getTransactionArabicStatusFromTransaction,
+} from "@/services/transactions";
 import { hexToRgba } from "@/utils/colors";
 import {
   AgentDepartment,
@@ -122,62 +127,6 @@ export default function TransactionScreen() {
       })
       .filter(Boolean) as AgentDepartment[];
   }, [profile, departments, isAdmin]);
-
-  const getItemColorByStatus = (status: TransactionStatus) => {
-    switch (status) {
-      case TransactionStatus.FAILED:
-        return palette.error;
-      case TransactionStatus.CANCELED:
-        return palette.warn;
-      case TransactionStatus.CONFIRMED:
-        return palette.success;
-      case TransactionStatus.PENDING:
-        return palette.accent;
-      default:
-        return palette.accent;
-    }
-  };
-
-  const getTransactionArabicStatus = (status: TransactionStatus): string => {
-    switch (status) {
-      case TransactionStatus.FAILED:
-        return "فشلت";
-      case TransactionStatus.CANCELED:
-        return "ألغيت";
-      case TransactionStatus.CONFIRMED:
-        return "إكتملت";
-      case TransactionStatus.PENDING:
-        return "قيد الانتظار";
-      default:
-        return "غير مصنف";
-    }
-  };
-
-  const getTransactionArabicStatusFromTransaction = (
-    trx: Transaction
-  ): string => {
-    switch (trx.status) {
-      case TransactionStatus.FAILED:
-        return "فشلت";
-      case TransactionStatus.CANCELED:
-        if (trx.is_paid_full === false) {
-          return "تمّ إسترداد الأموال";
-        }
-        return "ألغيت";
-      case TransactionStatus.CONFIRMED:
-        return "إكتملت";
-      case TransactionStatus.PENDING:
-        if (trx.is_paid_full === true) {
-          return "دفعة بالكامل";
-        } else if (trx.is_paid_full === false) {
-          return "دفعة جزئيا";
-        } else {
-          return "قيد الانتظار";
-        }
-      default:
-        return "غير مصنف";
-    }
-  };
 
   const handleUpdateTransactionState = async (status: TransactionStatus) => {
     if (selectedTransaction == null) {
@@ -612,7 +561,7 @@ export default function TransactionScreen() {
                               ? hexToRgba(palette.accent, 0.2)
                               : i.item?.__internal?.syncStatus === "ERROR"
                               ? hexToRgba(palette.error, 0.2)
-                              : palette.tint,
+                              : i.item?.created_by === profile?.user_id ? hexToRgba("#0288D1", 0.1)  : palette.tint,
                         },
                       ]}
                       android_ripple={{

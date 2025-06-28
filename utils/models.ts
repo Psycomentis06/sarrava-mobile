@@ -69,6 +69,26 @@ export type DepartmentAgentRelation = {
   added_by: string;
 };
 
+export type TransactionStatusHistoryMetadata =
+  | { amount: number; [key: string]: any }
+  | { [key: string]: any };
+
+export type TransactionStatusHistory = {
+  transaction_id: string;
+  prev_status: TransactionStatus;
+  curr_status: TransactionStatus;
+  created_at?: number | string;
+  created_by: string | null;
+  metadata: TransactionStatusHistoryMetadata | null;
+};
+
+export type TransactionPinAttempt = {
+  transaction_id: string;
+  created_at?: number | string;
+  created_by: string | null;
+  pin_code: string | null;
+};
+
 export type Transaction = {
   id: string; // UUID
   currency: Currency;
@@ -88,6 +108,8 @@ export type Transaction = {
   is_paid_full?: boolean | null; // boolean, optional
   first_installment?: number | null; // numeric, optional
   status: TransactionStatus; // text
+  status_history?: TransactionStatusHistory[];
+  confirmation_attempts?: TransactionPinAttempt[];
   created_by: string; // UUID
   created_at: string; // timestamp with time zone
   sender?: {
@@ -126,6 +148,10 @@ export enum TransactionStatus {
   CANCELED = "CANCELED",
   CONFIRMED = "CONFIRMED",
   FAILED = "FAILED",
+  REFUNDED = "REFUNDED",
+  PAID_OUT = "PAID_OUT",
+  COMPLETED = "COMPLETED",
+  BLOCKED = "BLOCKED",
 }
 
 export type BaseTransactionsAnalytics = {

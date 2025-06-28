@@ -2,6 +2,11 @@
   "name": "mvp-mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "author": {
+    "name": "Ali AMOR",
+    "email": "alibenamor30@gmail.com",
+    "url": "https://github.com/Psycomentis06"
+  },
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",

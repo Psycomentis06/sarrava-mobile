@@ -3,7 +3,11 @@ import { generateTransactionCode } from "@/services/transactions";
 import {
   Currency,
   InternalTransaction,
+  Transaction,
+  TransactionPinAttempt,
   TransactionStatus,
+  TransactionStatusHistory,
+  TransactionStatusHistoryMetadata,
   UserProfile,
 } from "@/utils/models";
 import { NewTransactionType } from "@/utils/schemas";
@@ -58,6 +62,7 @@ export type UseTransactionsHookReturnType = {
   transactions: InternalTransaction[];
   transactionsCount: number;
   searchResults: InternalTransaction[];
+
   search: (
     val: string,
     type?: TransactionSearchType,
@@ -75,6 +80,25 @@ export type UseTransactionsHookReturnType = {
   updateStatus: (
     transaction: InternalTransaction,
     status: TransactionStatus
+  ) => Promise<void>;
+  updateStatusV2: (
+    transaction: InternalTransaction,
+    status: TransactionStatus,
+    metadata?: object
+  ) => Promise<void>;
+  updateTransaction: (
+    transaction: InternalTransaction,
+    updates: Partial<Transaction>,
+    options?: {
+      statusMetadata?: object;
+      recordStatusHistory?: boolean;
+      recordPinAttempt?: boolean;
+      failedPinCode?: string;
+    }
+  ) => Promise<void>;
+  recordPinAttempt: (
+    transaction: InternalTransaction,
+    pinCode: string
   ) => Promise<void>;
   retryTransaction: (localId: string) => Promise<void>; // New: Manual retry
   removeTransaction: (localId: string) => Promise<void>; // New: Manual remove
@@ -131,6 +155,7 @@ let isOrchestrationRunning = false;
 let isSyncRunning = false;
 let isOrchestrationCompleted = false;
 const queueMutex = new AsyncMutex();
+let _transactions_session_cache: InternalTransaction[] = [];
 
 export function useTransactions(): UseTransactionsHookReturnType {
   const { isInternetReachable } = useNetInfo();
@@ -342,7 +367,14 @@ export function useTransactions(): UseTransactionsHookReturnType {
                 id, name, sign, to_dollar_rate, country,
                 flag, created_at, updated_at, updated_by,
                 ar_name, country_code, flag_url
-              )
+              ),
+              status_history:transaction_status_history (
+                prev_status, curr_status, created_at, metadata,
+                created_by
+              ),
+              confirmation_attempts:transaction_confirmation_attempts (
+                created_at, created_by, pin_code
+              )  
             `,
           { count: "exact" }
         );
@@ -540,7 +572,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
             status: tx.status,
             pin_code: tx.pin_code,
             code: tx.code,
-            department_id: tx.department_id
+            department_id: tx.department_id,
           };
 
           const { data: trxData, error: trxErr } = await supabase
@@ -567,6 +599,20 @@ export function useTransactions(): UseTransactionsHookReturnType {
                 "لم تكتمل عملية أرسال الأموال لخطئ ما. يرجى المحاولة لاحقا وإذا فشلت فرجاء الأتصال بالمسؤول",
             };
           }
+
+          const trxHistoryEntry = {
+            transaction_id: trxData.id,
+            prev_status: null,
+            curr_status: trxData.status,
+            created_by: tx.created_by,
+            metadata: null,
+          };
+
+          await supabase
+            .from("transaction_status_history")
+            .insert(trxHistoryEntry);
+
+          trxData["status_history"] = [trxHistoryEntry];
 
           syncedTx = {
             ...trxData,
@@ -669,7 +715,12 @@ export function useTransactions(): UseTransactionsHookReturnType {
       );
 
       let initialSupabaseOrCached: InternalTransaction[] = [];
-      if (isInternetReachable === true) {
+      if (
+        isInternetReachable === true &&
+        _transactions_session_cache.length > 0
+      ) {
+        initialSupabaseOrCached = _transactions_session_cache;
+      } else if (isInternetReachable === true) {
         console.log("Internet reachable: Loading from Supabase and caching.");
         const supabaseData = await getTransactionsFromSupabase(0);
         initialSupabaseOrCached = supabaseData;
@@ -744,6 +795,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
       );
 
       setTransactions(merged);
+      _transactions_session_cache = merged;
       setSearchResults(merged);
       return merged;
     } catch (error) {
@@ -895,6 +947,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
    */
   const reload = useCallback(() => {
     console.log("Reloading all transactions (triggered externally).");
+    _transactions_session_cache = [];
     return loadInitialDataRef.current();
   }, []);
 
@@ -916,7 +969,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
       const term = searchValue.trim().toLowerCase();
       console.debug("Searching for:", term);
       console.log(term, searchType, scope, sort);
-      
+
       try {
         if (isInternetReachable === false) {
           const filtered = transactions.filter((t) => {
@@ -992,6 +1045,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
         );
         return updated;
       });
+      _transactions_session_cache = transactions;
 
       setSearchResults((prev) => [...prev, ...newTransactions]);
       setPage(nextPage);
@@ -1031,6 +1085,7 @@ export function useTransactions(): UseTransactionsHookReturnType {
               ? { ...t, status }
               : t
           );
+          _transactions_session_cache = transactions;
           setSearchResults(updated);
           // Update offline cache for immediate persistence
           AsyncStorage.setItem(
@@ -1246,6 +1301,169 @@ export function useTransactions(): UseTransactionsHookReturnType {
     [reload, removeTransactionFromQueue]
   );
 
+  const updateTransaction = useCallback(
+    async (
+      transaction: InternalTransaction,
+      updates: Partial<Transaction>,
+      options?: {
+        statusMetadata?: TransactionStatusHistoryMetadata;
+        recordStatusHistory?: boolean;
+        recordPinAttempt?: boolean;
+        failedPinCode?: string;
+      }
+    ): Promise<void> => {
+      try {
+        const merged = { ...transaction, ...updates };
+
+        // If local and unsynced
+        if (
+          transaction.__internal?.localId &&
+          !transaction.__internal?.syncStatus
+        ) {
+          await updateTransactionInQueue(
+            transaction.__internal.localId,
+            updates
+          );
+          return;
+        }
+
+        if (!isInternetReachable) {
+          const offlineTx: InternalTransaction = {
+            ...transaction,
+            ...updates,
+            __internal: {
+              ...(transaction.__internal || {}),
+              localId: Crypto.randomUUID(),
+              operationType: "UPDATE_STATUS",
+              originalId: transaction.id,
+              syncStatus: "PENDING",
+              createdOffline: true,
+            },
+          };
+          await addTransactionToQueue(offlineTx);
+          return;
+        }
+
+        // Online update
+        if (updates && Object.keys(updates).length > 0) {
+          const { error } = await supabase
+            .from("transactions")
+            .update(updates)
+            .eq("id", transaction.id)
+            .select()
+            .single();
+
+          if (error) {
+            throw {
+              error: new Error(error.message),
+              error_ar: "حدث خطأ أثناء تحديث بيانات المعاملة",
+            };
+          }
+        }
+        // Insert into status history if required
+        if (options?.recordStatusHistory && updates.status) {
+          const history: TransactionStatusHistory = {
+            transaction_id: transaction.id,
+            prev_status: transaction.status,
+            curr_status: updates.status,
+            created_by: session?.user.id || null,
+            metadata: options?.statusMetadata || null,
+          };
+          await supabase.from("transaction_status_history").insert(history);
+
+          updates.status_history = transaction.status_history
+          if (!updates.status_history) {
+            updates.status_history = [history];
+          } else {
+            updates.status_history.push(history);
+          }
+        }
+
+        // Insert pin attempt record if required
+        if (options?.recordPinAttempt) {
+          const pin: TransactionPinAttempt = {
+            transaction_id: transaction.id,
+            created_by: session?.user.id || null,
+            pin_code: options?.failedPinCode || null,
+          };
+          await supabase.from("transaction_confirmation_attempts").insert(pin);
+
+          updates.confirmation_attempts = transaction.confirmation_attempts
+          if (!updates.confirmation_attempts) {
+            updates.confirmation_attempts = [pin];
+          } else {
+            updates.confirmation_attempts.push(pin);
+          }
+        }
+
+        // Optimistically update local state
+        setTransactions((prev) => {
+          const updated = prev.map((t) =>
+            (t.__internal?.localId &&
+              t.__internal.localId === transaction.__internal?.localId) ||
+            t.id === transaction.id
+              ? { ...t, ...updates }
+              : t
+          );
+          _transactions_session_cache = transactions;
+          setSearchResults(updated);
+          AsyncStorage.setItem(
+            OFFLINE_TRANSACTIONS_CACHE_KEY,
+            JSON.stringify(updated)
+          );
+          return updated;
+        });
+      } catch (err) {
+        const error = err as Error;
+        if ((err as any).error && (err as any).error_ar) {
+          throw err;
+        }
+        throw { error: error, error_ar: "حدث خطأ أثناء تحديث بيانات المعاملة" };
+      }
+    },
+    [
+      isInternetReachable,
+      session?.user.id,
+      updateTransactionInQueue,
+      addTransactionToQueue,
+    ]
+  );
+
+  const updateStatusV2 = useCallback(
+    async (
+      transaction: InternalTransaction,
+      status: TransactionStatus,
+      metadata?: object
+    ): Promise<void> => {
+      await updateTransaction(
+        transaction,
+        { status },
+        {
+          statusMetadata: metadata,
+          recordStatusHistory: true,
+        }
+      );
+    },
+    [updateTransaction]
+  );
+
+  const recordPinAttempt = useCallback(
+    async (
+      transaction: InternalTransaction,
+      pinCode: string
+    ): Promise<void> => {
+      await updateTransaction(
+        transaction,
+        {},
+        {
+          recordPinAttempt: true,
+          failedPinCode: pinCode,
+        }
+      );
+    },
+    [updateTransaction]
+  );
+
   return {
     isLoading,
     transactions,
@@ -1258,7 +1476,10 @@ export function useTransactions(): UseTransactionsHookReturnType {
     isLoadMoreLoading,
     hasNextPage,
     updateStatus,
-    retryTransaction, // Expose new function
-    removeTransaction, // Expose new function
+    updateStatusV2,
+    updateTransaction,
+    recordPinAttempt,
+    retryTransaction,
+    removeTransaction,
   };
 }

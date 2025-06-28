@@ -2,10 +2,12 @@
  * Functions related working with transactions
  */
 
+import { useThemePalette } from "@/hooks/useThemePalette";
 import {
   AgentDepartment,
   Currency,
   Transaction,
+  TransactionStatus,
   UserProfile,
 } from "@/utils/models";
 
@@ -103,6 +105,16 @@ export function calculateTransactionFees(amount: number) {
     governmentRate: GOVERNMENT_TAX_RATE,
   };
 }
+
+export const getConvertedAmount = (
+  amount: number,
+  from: Currency,
+  to: Currency
+): number => {
+  if (!amount || isNaN(amount)) return 0;
+  const exchangeRate = getExchangeRate(from, to);
+  return Math.round(amount * exchangeRate * 1e6) / 1e6;
+};
 
 export function generateTransactionHTML(trx: Transaction, id: string): string {
   const formattedDate = new Date(trx.created_at).toLocaleString();
@@ -346,4 +358,112 @@ export function generateTransactionCode(
   return `${depCode.toString().padStart(3, "0")}${agentCode
     .toString()
     .padStart(3, "0")}${dateCode}${randomDigits}`;
+}
+
+export function getItemColorByStatus(status: TransactionStatus) {
+  const palette = useThemePalette();
+  switch (status) {
+    case TransactionStatus.FAILED || TransactionStatus.BLOCKED:
+      return palette.error;
+    case TransactionStatus.CANCELED:
+      return palette.warn;
+    case TransactionStatus.COMPLETED:
+      return palette.success;
+    default:
+      return palette.accent;
+  }
+}
+
+export function getTransactionArabicStatus(status: TransactionStatus) {
+  switch (status) {
+    case TransactionStatus.FAILED:
+      return "فشلت";
+    case TransactionStatus.CANCELED:
+      return "ألغيت";
+    case TransactionStatus.CONFIRMED:
+      return "إكتملت";
+    case TransactionStatus.PENDING:
+      return "قيد الانتظار";
+    default:
+      return "غير مصنف";
+  }
+}
+
+export function getTransactionArabicStatusFromTransaction(
+  trx: Transaction
+): string {
+  switch (trx.status) {
+    case TransactionStatus.FAILED:
+      return "فشلت";
+    case TransactionStatus.CANCELED:
+      return "ألغيت";
+    case TransactionStatus.CONFIRMED:
+      return "اكدت";
+    case TransactionStatus.PENDING:
+      if (trx.is_paid_full === true) {
+        return "سلّمت كاملة";
+      } else if (trx.is_paid_full === false) {
+        return "سلّمت جزئيّا";
+      } else {
+        return "أنشأت";
+      }
+    case TransactionStatus.BLOCKED:
+      return "مجمّدة";
+    case TransactionStatus.REFUNDED:
+      return "استرددت";
+    case TransactionStatus.PAID_OUT:
+      if (trx.is_paid_full === true) {
+        return "دفعت كاملة";
+      } else if (trx.is_paid_full === false) {
+        return "دفعت جزئيّا";
+      }
+      return "دفعت";
+    case TransactionStatus.COMPLETED:
+      return "اكتملت";
+    default:
+      return "غير مصنف";
+  }
+}
+
+export function getTransactionHistoryDetailTemplate(
+  status?: TransactionStatus,
+  self: boolean = false
+) {
+  if (!status) return "لم يتمّ التعرّف على الحالة";
+  switch (status) {
+    case TransactionStatus.PENDING:
+      if (self) {
+        return "قمت بإنشاء المعاملة بتاريخ @date";
+      }
+      return "قام @user بإنشاء المعاملة بتاريخ @date";
+    case TransactionStatus.CANCELED:
+      if (self) {
+        return "قمت بإلغاء المعاملة بتاريخ @date";
+      }
+      return "قام @user بإلغاء المعاملة بتاريخ @date";
+    case TransactionStatus.CONFIRMED:
+      if (self) {
+        return "قمت بتأكيد المعاملة بتاريخ @date";
+      }
+      return "قام @user بتأكيد المعاملة بتاريخ @date";
+    case TransactionStatus.FAILED:
+      return "فشلت المعاملة لخلل تقني بتاريخ @date";
+    case TransactionStatus.REFUNDED:
+      if (self) {
+        return "قمت باسترداد الأموال بتاريخ @date";
+      }
+      return "قام @user باسترداد الأموال بتاريخ @date";
+    case TransactionStatus.PAID_OUT:
+      if (self) {
+        return "قمت بدفع الأموال بتاريخ @date";
+      }
+      return "قام @user بدفع الأموال بتاريخ @date";
+    case TransactionStatus.COMPLETED:
+      if (self) {
+        return "قمت بإتمام المعاملة بتاريخ @date";
+      }
+      return "قام @user بإتمام المعاملة بتاريخ @date";
+    case TransactionStatus.BLOCKED:
+      return "تمّ تجميد المعاملة بتاريخ @date نظرا لعدة محاولات تحقّق فاشلة";
+  }
 }

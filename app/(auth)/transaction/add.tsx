@@ -7,7 +7,7 @@ import { useCurrencies } from "@/hooks/useCurrencies";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { useTransactions } from "@/hooks/useTransactions";
-import { getExchangeRate } from "@/services/transactions";
+import { getConvertedAmount, getExchangeRate } from "@/services/transactions";
 import { hexToRgba } from "@/utils/colors";
 import { Currency } from "@/utils/models";
 import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
@@ -188,15 +188,6 @@ function TransactionFormComponent({
   const operationCostPercent = watch("price.operationCostPercent");
   const operationCostFixed = watch("price.operationCostFixed");
 
-  const getConvertedAmount = (
-    amount: number,
-    from: Currency,
-    to: Currency
-  ): number => {
-    if (!amount || isNaN(amount)) return 0;
-    const exchangeRate = getExchangeRate(from, to);
-    return Math.round(amount * exchangeRate * 1e6) / 1e6;
-  };
 
   // Calculate fees with detailed breakdown in selected currency
   const getFeeBreakdown = () => {
