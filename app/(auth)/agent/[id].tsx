@@ -16,6 +16,7 @@ import {
   FlatList,
   Image,
   Pressable,
+  ScrollView,
   TextStyle,
   View,
 } from "react-native";
@@ -143,9 +144,20 @@ export default function AgentDetailsScreen() {
 
   if (isAgentsLoading || isDepsLoading || !agent) {
     return (
+      <>
+      <Stack.Screen
+        options={{
+          title: "تفاصيل الوكيل",
+          headerStyle: { backgroundColor: palette.accent },
+          headerTintColor: palette.background,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: palette.tint },
+        }}
+      />
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ThemedText>Loading Agent Details...</ThemedText>
       </View>
+      </>
     );
   }
 
@@ -160,7 +172,7 @@ export default function AgentDetailsScreen() {
           contentStyle: { backgroundColor: palette.tint },
         }}
       />
-      <View>
+      <ScrollView>
         <View style={{ backgroundColor: palette.accent, height: 50 }}></View>
         <Image
           defaultSource={require("@/assets/images/anonymous-avatar.jpg")}
@@ -211,6 +223,7 @@ export default function AgentDetailsScreen() {
           </View>
           <View style={{ maxHeight: "50%" }}>
             <FlatList
+            scrollEnabled={false}
               keyExtractor={(d) => d.id}
               data={agentDepartments}
               renderItem={({ item }) => (
@@ -348,7 +361,7 @@ export default function AgentDetailsScreen() {
             </ThemedText>
           </ThemedButton>
         </View>
-      </View>
+      </ScrollView>
     </>
   );
 }

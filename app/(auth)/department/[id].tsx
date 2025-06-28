@@ -141,7 +141,7 @@ function AgentsScene({ depAgents }: { depAgents: UserProfile[] }) {
                 onPress={() =>
                   router.navigate({
                     pathname: "/(auth)/agent/[id]",
-                    params: { id: item.id, agent: JSON.stringify(item) },
+                    params: { id: item.user_id, agent: JSON.stringify(item) },
                   })
                 }
               >
@@ -334,10 +334,10 @@ export default function DepartmentDetailsScreen() {
   const { agents } = useAgents();
 
   const departmentAgents = useMemo(() => {
-    return agents.filter((a) => {
-      if (a.department_id) return a.department_id === depDetails.id;
-      if (a.department?.id) return a.department.id === depDetails.id;
-      return false;
+    return agents.filter((agent) => {
+      return agent.departments?.some(
+        (relation) => relation.department_id === depDetails.id
+      );
     });
   }, [agents, depDetails.id]);
 
