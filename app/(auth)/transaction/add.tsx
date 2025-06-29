@@ -9,10 +9,11 @@ import { useThemePalette } from "@/hooks/useThemePalette";
 import { useTransactions } from "@/hooks/useTransactions";
 import { getConvertedAmount, getExchangeRate } from "@/services/transactions";
 import { hexToRgba } from "@/utils/colors";
-import { Currency } from "@/utils/models";
+import { Currency, Transaction } from "@/utils/models";
 import { newTransactionSchema, NewTransactionType } from "@/utils/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Picker } from "@react-native-picker/picker";
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, Stack, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -26,8 +27,10 @@ import {
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
   View,
 } from "react-native";
 import BouncyCheckbox from "react-native-bouncy-checkbox";
@@ -187,7 +190,6 @@ function TransactionFormComponent({
   const isPaidFull = watch("price.isPaidFull");
   const operationCostPercent = watch("price.operationCostPercent");
   const operationCostFixed = watch("price.operationCostFixed");
-
 
   // Calculate fees with detailed breakdown in selected currency
   const getFeeBreakdown = () => {
@@ -569,12 +571,138 @@ function TransactionFormComponent({
   );
 }
 
+const AddTransactionSuccessModal = ({
+  visible = false,
+  onClose,
+  onCopy,
+  transaction,
+}: {
+  visible: boolean;
+  onClose?: () => void;
+  onCopy?: () => void;
+  transaction?: Transaction;
+}) => {
+  const palette = useThemePalette();
+  const [showButtons, setShowButtons] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const {departments} = useDepartments()
+  const department = useMemo(() => departments.find(d => d.id === transaction?.department_id), [departments])
+
+  useEffect(() => {
+    let timer: any;
+    if (visible) {
+      setShowButtons(false);
+      setCountdown(5);
+      timer = setInterval(() => {
+        setCountdown((prevCountdown) => {
+          if (prevCountdown <= 1) {
+            clearInterval(timer);
+            setShowButtons(true);
+            return 0;
+          }
+          return prevCountdown - 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(timer);
+    }
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [visible]);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+      onDismiss={onClose}
+    >
+      <View style={styles.tsmModalBackground}>
+        <View style={styles.tsmModalContainer}>
+          <ThemedText
+            weight="bold"
+            style={[styles.tsmModalText, { color: palette.success }]}
+          >
+            تمّ إضافة المعاملة بنجاح
+          </ThemedText>
+          <ThemedText>
+            رقم المعاملة:{" "}
+            <ThemedText weight="bold">
+              {transaction?.code || "00000000000000000000"}
+            </ThemedText>
+          </ThemedText>
+          <ThemedText>
+            الرمز السرّي (يسلّم للحريف فقط):{" "}
+            <ThemedText weight="bold">
+              {transaction?.pin_code || "123456"}
+            </ThemedText>
+          </ThemedText>
+
+          <View style={{ marginTop: 10, flexDirection: "row", gap: 10 }}>
+            {showButtons ? (
+              <>
+                <TouchableOpacity
+                  onPress={() => {
+                    Clipboard.setStringAsync(`
+                      رقم المعاملة: ${transaction?.code || '00000000000000000000'} \n
+                      الرمز السري: ${transaction?.pin_code || '123456'} \n
+                      المستفيد: ${transaction?.receiver?.firstname || 'مجهول'} ${transaction?.receiver?.lastname || 'مجهول'} \n
+                      رقم الهاتف للمستفيد: ${transaction?.receiver?.phone} \n
+                      الفرع: ${department?.name || 'فرع'} | ${department?.country_ar || 'بلد'} | ${department?.city || 'مدينة'} | ${department?.address || 'عنوان'} | ${department?.zipcode || 'رمز البريدي'}
+                      `)
+                    if (onCopy) {
+                      onCopy();
+                    }
+                  }}
+                  style={[
+                    styles.tsmButton,
+                    { backgroundColor: hexToRgba(palette.accent, 0.2) },
+                  ]}
+                >
+                  <ThemedText style={{ color: palette.accent }}>
+                    نسخ الرمز
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (onClose) {
+                      onClose();
+                    }
+                  }}
+                  style={[
+                    styles.tsmButton,
+                    { backgroundColor: hexToRgba(palette.error, 0.2) },
+                  ]}
+                >
+                  <ThemedText style={{ color: palette.error }}>
+                    إخفاء
+                  </ThemedText>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <ThemedText style={{ color: palette.text, fontSize: 16 }}>
+                الرجاء الانتظار ({countdown} ثواني)
+              </ThemedText>
+            )}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 export default function AddTransactionScreen() {
   const palette = useThemePalette();
   const { profile } = useUserProfile();
   const router = useRouter();
   const { currencies, isLoading: isCurrenciesLoading } = useCurrencies();
   const [isAddLoading, setIsAddLoading] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] =
+    useState<boolean>(false);
+  const [createdTransaction, setCreatedTransaction] = useState<Transaction>();
   const { add } = useTransactions();
   const { departments } = useDepartments();
   const { control, formState, handleSubmit, watch, setValue } =
@@ -620,11 +748,13 @@ export default function AddTransactionScreen() {
     setIsAddLoading(true);
     try {
       const trx = await add(data, profile);
-      Alert.alert("نجاح العمليّة", "تمّ إضافة العمليّة بنجاح");
-      router.replace({
-        pathname: "/(auth)/(tabs)/transaction",
-        params: { id: trx.id }, // Sending the ID to reload the data from the database
-      });
+      setIsSuccessModalVisible(true);
+      setCreatedTransaction(trx);
+      // Alert.alert("نجاح العمليّة", "تمّ إضافة العمليّة بنجاح");
+      // router.replace({
+      //   pathname: "/(auth)/(tabs)/transaction",
+      //   params: { id: trx.id },
+      // });
     } catch (err) {
       console.error(err);
       if (err && typeof err === "object" && "error_ar" in err) {
@@ -774,6 +904,28 @@ export default function AddTransactionScreen() {
           </View>
         </ThemedView>
       </ScrollView>
+      <AddTransactionSuccessModal
+        visible={isSuccessModalVisible}
+        transaction={createdTransaction}
+        onClose={() => {
+          setIsSuccessModalVisible(false);
+          setTimeout(() => {
+            router.replace({
+              pathname: "/(auth)/(tabs)/transaction",
+              params: { id: createdTransaction?.id },
+            });
+          }, 200);
+        }}
+        onCopy={() => {
+          setIsSuccessModalVisible(false);
+          setTimeout(() => {
+            router.replace({
+              pathname: "/(auth)/(tabs)/transaction",
+              params: { id: createdTransaction?.id },
+            });
+          }, 200);
+        }}
+      />
     </>
   );
 }
@@ -787,5 +939,32 @@ const styles = StyleSheet.create({
     margin: 10,
     padding: 15,
     borderRadius: 15,
+  },
+  tsmContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tsmButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+  },
+  tsmModalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tsmModalContainer: {
+    width: "90%",
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  tsmModalText: {
+    marginBottom: 15,
+    textAlign: "center",
   },
 });
