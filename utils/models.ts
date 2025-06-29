@@ -160,14 +160,21 @@ export type BaseTransactionsAnalytics = {
   pending_transactions: number;
   failed_transactions: number;
   canceled_transactions: number;
+  refunded_transactions: number;
+  paid_out_transactions: number;
+  completed_transactions: number;
+  blocked_transactions: number;
   confirmed_usd_amount: number;
   pending_usd_amount: number;
   failed_usd_amount: number;
   canceled_usd_amount: number;
+  refunded_usd_amount: number;
+  paid_out_usd_amount: number;
+  completed_usd_amount: number;
+  blocked_usd_amount: number;
   confirmed_earnings_usd: number;
-  confirmed_tax_fees_usd: number;
   pending_earnings_usd: number;
-  pending_tax_fees_usd: number;
+  completed_earnings_usd: number;
   avg_confirmed_transaction_usd: number;
   first_transaction_date: number | string;
   last_transaction_date: number | string;
@@ -175,6 +182,9 @@ export type BaseTransactionsAnalytics = {
   current_month_confirmed_transactions: number;
   current_month_confirmed_usd_amount: number;
   current_month_earnings_usd: number;
+  current_month_completed_transactions: number;
+  current_month_completed_usd_amount: number;
+  current_month_completed_earnings_usd: number;
 };
 
 export type AgentTransactionsAnalytics = BaseTransactionsAnalytics & {

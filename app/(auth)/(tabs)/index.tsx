@@ -99,18 +99,18 @@ export default function HomeScreen() {
       >
         <ThemedView style={styles.container}>
           {profile?.department_id && departmentAnalytics && (
-            <View style={{padding: 10}}>
-            <BouncyCheckbox
-              text="إحصائيات الفرع"
-              textStyle={{
-                textDecorationLine: "none",
-                color: palette.text,
-              }}
-              fillColor={palette.accent}
-              isChecked={isDepartmentStatsSelected}
-              onPress={(val) => setIsDepartmentStatsSelected(val)}
-            />
-</View>
+            <View style={{ padding: 10 }}>
+              <BouncyCheckbox
+                text="إحصائيات الفرع"
+                textStyle={{
+                  textDecorationLine: "none",
+                  color: palette.text,
+                }}
+                fillColor={palette.accent}
+                isChecked={isDepartmentStatsSelected}
+                onPress={(val) => setIsDepartmentStatsSelected(val)}
+              />
+            </View>
           )}
           {/* Overview Stats */}
           <View style={{ paddingTop: 40, paddingBottom: 20 }}>
@@ -277,18 +277,17 @@ const AnalyticsCards = ({
     {
       id: "total_transactions_amount",
       icon: <ArrowsExchange />,
-      label: "أجمالي المعاملات",
+      label: "الأموال المدفوعة",
       value: `${getProfileCurrencyAwareAnalyticLabel(
-        transactionsAnalytics?.confirmed_usd_amount ?? 0
+        transactionsAnalytics?.completed_usd_amount ?? 0
       )}`,
     },
     {
       id: "expected_transactions",
       icon: <Money2 />,
-      label: "أجمالي المعاملات المتوقّعة",
+      label: "الأموال المستلمة",
       value: `${getProfileCurrencyAwareAnalyticLabel(
-        (transactionsAnalytics?.pending_usd_amount ?? 0) +
-          (transactionsAnalytics?.confirmed_usd_amount ?? 0)
+        transactionsAnalytics?.confirmed_usd_amount ?? 0
       )}`,
     },
     {
@@ -296,33 +295,9 @@ const AnalyticsCards = ({
       icon: <Money />,
       label: "أجمالي الإرادات",
       value: `${getProfileCurrencyAwareAnalyticLabel(
-        transactionsAnalytics?.confirmed_earnings_usd ?? 0
-      )}`,
-    },
-    {
-      id: "total_fees",
-      icon: <ReciptTax />,
-      label: "أجمالي الرسوم",
-      value: `${getProfileCurrencyAwareAnalyticLabel(
-        transactionsAnalytics?.confirmed_tax_fees_usd ?? 0
-      )}`,
-    },
-    {
-      id: "expected_earnings",
-      icon: <Money />,
-      label: "أجمالي الإرادات المتوقّعة",
-      value: `${getProfileCurrencyAwareAnalyticLabel(
         (transactionsAnalytics?.pending_earnings_usd ?? 0) +
-          (transactionsAnalytics?.confirmed_earnings_usd ?? 0)
-      )}`,
-    },
-    {
-      id: "expected_fees",
-      icon: <Money />,
-      label: "أجمالي الرسوم المتوقعة",
-      value: `${getProfileCurrencyAwareAnalyticLabel(
-        (transactionsAnalytics?.pending_tax_fees_usd ?? 0) +
-          (transactionsAnalytics?.confirmed_tax_fees_usd ?? 0)
+          (transactionsAnalytics?.confirmed_earnings_usd ?? 0) +
+          (transactionsAnalytics?.completed_earnings_usd ?? 0)
       )}`,
     },
     {
@@ -335,21 +310,45 @@ const AnalyticsCards = ({
       id: "confirmed_transactions",
       icon: <ReciptTax />,
       label: "المعاملات المكتملة",
-      value: `${transactionsAnalytics?.confirmed_transactions ?? 0}`,
+      value: `${transactionsAnalytics?.completed_transactions ?? 0}`,
     },
     {
       id: "pending_transactions",
       icon: <Money2 />,
-      label: "المعاملات المعلقة",
+      label: "المعاملات المستلمة جزئيا",
       value: `${transactionsAnalytics?.pending_transactions ?? 0}`,
+    },
+    {
+      id: "total_fees",
+      icon: <ReciptTax />,
+      label: "المعاملات المستلمة بالكامل",
+      value: `${getProfileCurrencyAwareAnalyticLabel(
+        transactionsAnalytics?.confirmed_transactions ?? 0
+      )}`,
+    },
+    {
+      id: "expected_earnings",
+      icon: <Money />,
+      label: "المعاملات المدفوعة جزئيا",
+      value: `${getProfileCurrencyAwareAnalyticLabel(
+        (transactionsAnalytics?.pending_earnings_usd ?? 0) +
+          (transactionsAnalytics?.confirmed_earnings_usd ?? 0)
+      )}`,
+    },
+    {
+      id: "expected_fees",
+      icon: <Money />,
+      label: "المعاملات المجمّدة",
+      value: `${getProfileCurrencyAwareAnalyticLabel(
+        transactionsAnalytics?.blocked_transactions ?? 0
+      )}`,
     },
     {
       id: "success_rate",
       icon: <Money2 />,
-      label: "معدل النجاح",
+      label: "المعاملات الملغية",
       value: `${getProfileCurrencyAwareAnalyticLabel(
-        transactionsAnalytics?.success_rate_percent ?? 0,
-        true
+        transactionsAnalytics?.canceled_transactions ?? 0
       )}`,
     },
   ];

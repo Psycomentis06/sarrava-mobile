@@ -4,12 +4,15 @@ import { AgentTransactionsAnalytics } from "@/utils/models";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { useCallback, useEffect, useState } from "react";
+import { useSupabaseHasPermissions } from "./useSupabaseHasPermissions";
 
 const CACHE_VERSION = 0;
 
 export function useAgentAnalytics() {
   const [isSessionLoading, session] = UseSupabaseSession();
   const { isInternetReachable } = useNetInfo();
+  const { hasPermission: isAdmin, isLoading: isPermissionLoading } =
+    useSupabaseHasPermissions(["admin"]);
   const [analytics, setAnalytics] = useState<AgentTransactionsAnalytics | null>(
     null
   );
@@ -20,17 +23,32 @@ export function useAgentAnalytics() {
 
   const fetchAnalytics = useCallback(async () => {
     if (!session?.user.id) return;
+    if (isPermissionLoading) return;
     const cacheKey = getCacheKey(session.user.id);
 
     setIsLoading(true);
 
     try {
       if (isInternetReachable) {
-        const { data, error } = await supabase
-          .from("transactions_agent_stats_view")
-          .select()
-          .eq("agent_id", session.user.id)
+        let data: any;
+        let error: any;
+
+        if (isAdmin) {
+          const { data: d, error: e } = await supabase.rpc(
+            "get_global_transactions_stats"
+          )
           .single();
+          data = d;
+          error = e;
+        } else {
+          const { data: d, error: e } = await supabase
+            .from("transactions_agent_stats_view")
+            .select()
+            .eq("agent_id", session.user.id)
+            .single();
+          data = d;
+          error = e;
+        }
 
         if (error) {
           console.error("Error fetching analytics:", error);
@@ -49,13 +67,13 @@ export function useAgentAnalytics() {
     } finally {
       setIsLoading(false);
     }
-  }, [session?.user.id, isInternetReachable]);
+  }, [session?.user.id, isInternetReachable, isPermissionLoading]);
 
   useEffect(() => {
     if (!isSessionLoading && session?.user.id) {
       fetchAnalytics();
     }
-  }, [isSessionLoading, session?.user.id, fetchAnalytics]);
+  }, [isSessionLoading, session?.user.id, fetchAnalytics, isPermissionLoading]);
 
   return {
     analytics,
