@@ -1342,7 +1342,7 @@ export default function TransactionDetailsScreen() {
               }
               style={styles.shmCloseButton}
             >
-              <ThemedText>Close</ThemedText>
+              <ThemedText>إخفاء</ThemedText>
             </TouchableOpacity>
           </View>
         </View>
