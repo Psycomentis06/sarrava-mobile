@@ -105,7 +105,7 @@ export default function MoreOptions() {
           </Pressable>
         </Link>
 
-        <Link
+        {/* <Link
           href="/(auth)/(tabs)/my_departments"
           asChild
           style={{
@@ -124,7 +124,7 @@ export default function MoreOptions() {
             />
             <ThemedText style={{ marginLeft: 5 }}>فروعي</ThemedText>
           </Pressable>
-        </Link>
+        </Link> */}
 
         <Link
           href="/(auth)/(tabs)/department"
@@ -168,7 +168,7 @@ export default function MoreOptions() {
           </Pressable>
         </Link>
 
-        <Link href="/(auth)/transaction_tariffs" asChild>
+        {/* <Link href="/(auth)/transaction_tariffs" asChild>
           <Pressable
             style={styles.menuItem}
             android_ripple={{ color: "rgba(0,0,0,0.26)" }}
@@ -181,7 +181,7 @@ export default function MoreOptions() {
             />
             <ThemedText style={{ marginLeft: 5 }}>تعريفة المعاملات</ThemedText>
           </Pressable>
-        </Link>
+        </Link> */}
 
         <Pressable
           style={styles.menuItem}

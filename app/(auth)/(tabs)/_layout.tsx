@@ -109,10 +109,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="building" color={color} />
           ),
-          href:
-            !isLoading && hasAdminPermission
-              ? null
-              : "/(auth)/(tabs)/my_departments",
+          // href:
+          //   !isLoading && hasAdminPermission
+          //     ? null
+          //     : "/(auth)/(tabs)/my_departments",
+          href: null
         }}
       />
 
