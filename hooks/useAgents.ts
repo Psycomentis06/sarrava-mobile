@@ -344,6 +344,17 @@ export function useAgents(): UseAgentsHookReturnType {
         }
       }
       // 4. add to department
+      if (profile.department) {
+        try {
+          addToDepartment(
+            createdProfile.id,
+            profile.department,
+            (profile?.department_role as DepartmentRole) || DepartmentRole.STAFF
+          );
+        } catch (err) {
+          console.error(err);
+        }
+      }
 
       // 5. Update local state
       const newAgents = [createdProfile, ...agents];
