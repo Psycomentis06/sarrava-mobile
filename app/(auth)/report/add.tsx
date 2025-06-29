@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Picker } from "@react-native-picker/picker";
 import { Stack, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import DatePicker from "react-native-date-picker";
@@ -11,11 +11,13 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedTextInput } from "@/components/ThemedTextInput";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useUserProfile } from "@/contexts/profile";
+import { useDepartments } from "@/hooks/useDepartments";
+import { useSupabaseHasPermissions } from "@/hooks/useSupabaseHasPermissions";
 import { useThemePalette } from "@/hooks/useThemePalette";
 import { supabase } from "@/lib/supabase";
 import { newReportSchema, NewReportType } from "@/utils/schemas";
 import { useNetInfo } from "@react-native-community/netinfo";
-
 
 type DateRangeOption = {
   label: string;
@@ -32,7 +34,7 @@ interface ExistingReportCheckState {
   isChecking: boolean;
   exists: boolean;
 }
-
+const ALL_DEPS_ID = "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF";
 const DATE_RANGE_OPTIONS = [
   { label: "اليوم", value: "today" },
   { label: "أمس", value: "yesterday" },
@@ -47,30 +49,29 @@ const DATE_RANGE_OPTIONS = [
 export default function CreateReportScreen() {
   const palette = useThemePalette();
   const router = useRouter();
+  const {hasPermission: isAdmin} = useSupabaseHasPermissions(["admin"]);
+  const { departments } = useDepartments();
+  const { profile } = useUserProfile();
 
   const [showFromDatePicker, setShowFromDatePicker] = useState(false);
   const [showToDatePicker, setShowToDatePicker] = useState(false);
 
-  const {
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-  } = useForm<NewReportType>({
+  const { control, handleSubmit, watch, setValue } = useForm<NewReportType>({
     resolver: zodResolver(newReportSchema),
     defaultValues: {
       title: "",
       description: "",
       dateRangeType: "past30days",
       fromDate: new Date(new Date().setDate(new Date().getDate() - 30)),
-      toDate: new Date(),
+      toDate: new Date()
     },
   });
-  const {isInternetReachable} = useNetInfo()
+  const { isInternetReachable } = useNetInfo();
 
   const dateRangeType = watch("dateRangeType");
   const fromDate = watch("fromDate");
   const toDate = watch("toDate");
+  const targetDepartmentId = watch("department");
 
   const [agentActivity, setAgentActivity] = useState<AgentActivityState>({
     firstTransactionDate: null,
@@ -82,58 +83,97 @@ export default function CreateReportScreen() {
     useState<ExistingReportCheckState>({ isChecking: false, exists: false });
 
   const getSessionAgentId = async (): Promise<string | null> => {
-    const { data: session } = await supabase.auth.getSession();
-    return session?.session?.user?.id ?? null;
+    return profile?.user_id || null;
+  };
+
+  const agentDepartments = useMemo(
+    () =>
+      departments.filter((d) =>
+        profile?.departments?.map((ad) => ad.department_id).includes(d.id)
+      ),
+    [profile, departments]
+  );
+
+  useEffect(() => {
+    if (isAdmin) {
+      setValue('department', ALL_DEPS_ID)
+    } else {
+      setValue('department', agentDepartments.at(0)?.id)
+    }
+  }, [isAdmin])
+
+  const fetchDepartmentActivity = async () => {
+    try {
+      let data: any = null;
+      let error: any = null;
+      if (targetDepartmentId === ALL_DEPS_ID) {
+        const { data: d, error: e } = await supabase
+          .rpc("get_global_transaction_activity")
+          .single();
+        data = d;
+        error = e;
+      } else if (targetDepartmentId) {
+        const { data: d, error: e } = await supabase
+          .from("transactions_department_stats_view")
+          .select("first_transaction_date, last_transaction_date")
+          .eq("department_id", targetDepartmentId)
+          .single();
+        data = d;
+        error = e;
+      }
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setAgentActivity({
+          firstTransactionDate: data.first_transaction_date
+            ? new Date(data.first_transaction_date)
+            : null,
+          lastTransactionDate: data.last_transaction_date
+            ? new Date(data.last_transaction_date)
+            : null,
+          hasTransactions: !!data.first_transaction_date,
+        });
+      } else {
+        setAgentActivity({
+          firstTransactionDate: null,
+          lastTransactionDate: null,
+          hasTransactions: false,
+        });
+      }
+    } catch (error) {
+      console.error("Department activity fetch failed:", error);
+      setAgentActivity({
+        firstTransactionDate: null,
+        lastTransactionDate: null,
+        hasTransactions: false,
+      });
+    }
   };
 
   useEffect(() => {
-    const fetchAgentActivity = async () => {
-      try {
-        const agentId = await getSessionAgentId();
-        if (!agentId) return Alert.alert("خطأ", "لا يمكن جلب المستخدم");
-
-        const { data, error } = await supabase
-          .from("transactions_agent_stats_view")
-          .select("first_transaction_date, last_transaction_date")
-          .eq("agent_id", agentId)
-          .single();
-
-        if (error) throw error;
-
-        if (data) {
-          setAgentActivity({
-            firstTransactionDate: data.first_transaction_date
-              ? new Date(data.first_transaction_date)
-              : null,
-            lastTransactionDate: data.last_transaction_date
-              ? new Date(data.last_transaction_date)
-              : null,
-            hasTransactions: !!data.first_transaction_date,
-          });
-        }
-      } catch (error) {
-        console.error("Agent activity fetch failed:", error);
-      }
-    };
-
-    fetchAgentActivity();
-  }, []);
+    fetchDepartmentActivity();
+  }, [targetDepartmentId]);
 
   const checkExistingReport = async (from: Date, to: Date) => {
     try {
       setExistingReportCheck({ isChecking: true, exists: false });
 
-      const agentId = await getSessionAgentId();
-      if (!agentId) return;
+      if (!targetDepartmentId) return;
 
-      const { data, error } = await supabase
+      const query = supabase
         .from("reports")
         .select("id")
-        .eq("agent_id", agentId)
         .eq("from_date", from.toISOString().split("T")[0])
         .eq("to_date", to.toISOString().split("T")[0])
-        .maybeSingle();
 
+        if (targetDepartmentId) {
+          query.eq("department_id", targetDepartmentId)
+        }
+
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
 
       setExistingReportCheck({ isChecking: false, exists: !!data });
@@ -204,8 +244,11 @@ export default function CreateReportScreen() {
   };
 
   const onSubmit = async (data: NewReportType) => {
-    if(isInternetReachable === false) {
-      return Alert.alert("لايوجد إتصال أنترنات", "لايمكنك إضافة تقرير إلّى عند الأتصال بالأنترنات")
+    if (isInternetReachable === false) {
+      return Alert.alert(
+        "لاتوجد اتصال أنترنت",
+        "لايمكن إضافة تقرير إلّى عند التصال بالأنترنت"
+      );
     }
     if (!isDateRangeValid()) {
       return Alert.alert("خطأ", "فترة التقرير لا تتطابق مع نشاط الوكيل");
@@ -218,16 +261,17 @@ export default function CreateReportScreen() {
       const agentId = await getSessionAgentId();
       if (!agentId) return;
 
-      const { data: reportId, error } = await supabase.rpc(
-        "generate_agent_report",
-        {
-          p_agent_id: agentId,
-          p_title: data.title,
-          p_description: data.description || "",
-          p_from_date: data.fromDate.toISOString().split("T")[0],
-          p_to_date: data.toDate.toISOString().split("T")[0],
-        }
-      );
+      if (!targetDepartmentId) return;
+
+      const { data: reportId, error } = await supabase.rpc("generate_report", {
+        p_agent_id: agentId,
+        p_title: data.title,
+        p_description: data.description || "",
+        p_from_date: data.fromDate.toISOString().split("T")[0],
+        p_to_date: data.toDate.toISOString().split("T")[0],
+        p_department_id:
+          targetDepartmentId === ALL_DEPS_ID ? null : targetDepartmentId,
+      });
 
       if (error) throw error;
 
@@ -328,6 +372,55 @@ export default function CreateReportScreen() {
                 padding: 10,
               }}
             >
+              <ThemedText style={{ marginBottom: 8 }}>الفرع</ThemedText>
+              <Controller
+                name="department"
+                control={control}
+                render={({ field: { value, onChange } }) => (
+                  <Picker
+                    selectedValue={value}
+                    onValueChange={onChange}
+                    style={{ color: palette.text }}
+                    dropdownIconColor={palette.text}
+                  >
+                    {isAdmin && (
+                      <Picker.Item
+                        key="all"
+                        label="تقرير شامل"
+                        value={ALL_DEPS_ID}
+                      />
+                    )}
+                    {isAdmin &&
+                      departments &&
+                      departments.map((d) => (
+                        <Picker.Item
+                          key={d.id}
+                          label={`${d.name}|${d.country_ar}`}
+                          value={d.id}
+                        />
+                      ))}
+                    {!isAdmin &&
+                      departments &&
+                      agentDepartments &&
+                      agentDepartments.map((d) => (
+                        <Picker.Item
+                          key={d.id}
+                          label={`${d.name}|${d.country_ar}`}
+                          value={d.id}
+                        />
+                      ))}
+                  </Picker>
+                )}
+              />
+            </View>
+
+            <View
+              style={{
+                backgroundColor: palette.tint,
+                borderRadius: 8,
+                padding: 10,
+              }}
+            >
               <ThemedText style={{ marginBottom: 8 }}>
                 نوع الفترة الزمنية
               </ThemedText>
@@ -338,8 +431,12 @@ export default function CreateReportScreen() {
                   <Picker
                     selectedValue={value}
                     onValueChange={onChange}
-                    style={{ color: palette.text }}
+                    style={{
+                      color: palette.text,
+                      opacity: agentActivity.hasTransactions ? 1 : 0.5,
+                    }}
                     dropdownIconColor={palette.text}
+                    enabled={agentActivity.hasTransactions}
                   >
                     {DATE_RANGE_OPTIONS.map((option) => (
                       <Picker.Item
@@ -355,21 +452,35 @@ export default function CreateReportScreen() {
 
             {dateRangeType === "custom" && (
               <View style={{ gap: 15 }}>
-                <ThemedText
-                  style={{ marginBottom: 8, fontSize: 12, color: "gray" }}
-                >
-                  يمكنك اختيار تاريخ بين{" "}
-                  {formatDate(
-                    new Date(agentActivity.firstTransactionDate || 0)
-                  )}{" "}
-                  و {formatDate(new Date())}
-                </ThemedText>
+                {agentActivity.hasTransactions && (
+                  <ThemedText
+                    style={{ marginBottom: 8, fontSize: 12, color: "gray" }}
+                  >
+                    يمكنك اختيار تاريخ بين{" "}
+                    {formatDate(
+                      new Date(agentActivity.firstTransactionDate || 0)
+                    )}{" "}
+                    و {formatDate(new Date())}
+                  </ThemedText>
+                )}
+                {!agentActivity.hasTransactions && (
+                  <ThemedText
+                    style={{
+                      marginBottom: 8,
+                      fontSize: 12,
+                      color: palette.error,
+                    }}
+                  >
+                    لا توجد معاملات لإنشاء تقرير للفرع المحدّد
+                  </ThemedText>
+                )}
                 <Controller
                   name="fromDate"
                   control={control}
                   render={({ field: { value, onChange } }) => (
                     <Pressable
                       onPress={() => setShowFromDatePicker(true)}
+                      disabled={!agentActivity.hasTransactions}
                       style={{
                         backgroundColor: palette.tint,
                         borderRadius: 8,
@@ -377,6 +488,7 @@ export default function CreateReportScreen() {
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "center",
+                        opacity: agentActivity.hasTransactions ? 1 : 0.5,
                       }}
                     >
                       <ThemedText>من تاريخ</ThemedText>
@@ -409,6 +521,7 @@ export default function CreateReportScreen() {
                   render={({ field: { value } }) => (
                     <Pressable
                       onPress={() => setShowToDatePicker(true)}
+                      disabled={!agentActivity.hasTransactions}
                       style={{
                         backgroundColor: palette.tint,
                         borderRadius: 8,
@@ -416,6 +529,7 @@ export default function CreateReportScreen() {
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "center",
+                        opacity: agentActivity.hasTransactions ? 1 : 0.5,
                       }}
                     >
                       <ThemedText>إلى تاريخ</ThemedText>

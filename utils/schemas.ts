@@ -11,7 +11,7 @@ export const newTransactionAgentSchema = z.object({
     .min(2, { message: "يجب أن يتكون اللقب من حرفين على الأقل." }),
   email: z
     .string()
-    // .nonempty({ message: "البريد الألكتروني مطلوب" })
+    // .nonempty({ message: "البريد الإلكتروني مطلوب" })
     .email({ message: "عنوان البريد الإلكتروني غير صالح." })
     .or(z.literal(""))
     .optional()
@@ -103,7 +103,7 @@ export const newAgentSchema = z
       .min(2, { message: "يجب أن يتكون اللقب من حرفين على الأقل." }),
     email: z
       .string()
-      .nonempty({ message: "البريد الألكتروني مطلوب" })
+      .nonempty({ message: "البريد الإلكتروني مطلوب" })
       .email({ message: "عنوان البريد الإلكتروني غير صالح." }),
     phone: z.string().nonempty({ message: "رقم الهاتف مطلوب" }).min(8, {
       message: "يجب أن يكون رقم الهاتف مكونًا من 8 أرقام على الأقل",
@@ -131,7 +131,7 @@ export const loginSchema = z.object({
   email: z
     .string()
     .nonempty({ message: "مطلوب" })
-    .email({ message: "بريد ألكتروني غير صحيح" }),
+    .email({ message: "بريد الكتروني غير صحيح" }),
   password: z.string().nonempty({ message: "مطلوب" }),
 });
 
@@ -193,6 +193,7 @@ export const newReportSchema = z
   .object({
     title: z.string().min(1, "العنوان مطلوب"),
     description: z.string().optional(),
+    department: z.string().uuid().optional(),
     dateRangeType: z.enum([
       "custom",
       "today",

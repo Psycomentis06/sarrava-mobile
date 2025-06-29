@@ -192,18 +192,32 @@ export type TransactionsAnalytics =
   | DepartmentTransactionsAnalytics;
 
 export type Report = {
-  id: string; // UUID
-  agent_id: string; // UUID
-  title: string; // Text
-  description?: string; // Text (optional)
-  from_date: string | number; // Date
-  to_date: string | number; // Date
-  total_transactions: number; // Integer
-  confirmed_transactions: number; // Integer
-  pending_transactions: number; // Integer
-  failed_transactions: number; // Integer
-  canceled_transactions: number; // Integer
-  confirmed_usd_amount: number; // Numeric
-  confirmed_earnings_usd: number; // Numeric
-  created_at?: Date; // Timestamp (optional)
+  id: string;
+  agent_id: string;
+  department_id: string | null;
+  title: string;
+  description?: string;
+  from_date: string | number;
+  to_date: string | number;
+  total_transactions: number;
+  confirmed_transactions: number;
+  pending_transactions: number;
+  refunded_transactions: number;
+  paid_out_transactions: number;
+  completed_transactions: number;
+  failed_transactions: number;
+  canceled_transactions: number;
+  blocked_transactions: number;
+  confirmed_usd_amount: number;
+  pending_usd_amount: number;
+  failed_usd_amount: number;
+  canceled_usd_amount: number;
+  refunded_usd_amount: number;
+  paid_out_usd_amount: number;
+  completed_usd_amount: number;
+  blocked_usd_amount: number;
+  confirmed_earnings_usd: number;
+  pending_earnings_usd: number;
+  completed_earnings_usd: number;
+  created_at: string | number;
 };
